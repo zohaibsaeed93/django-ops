@@ -8,7 +8,7 @@ sync:
 
 lint:
     uv run ruff check .
-    uv run mypy tests
+    uv run mypy cli/djangoops tests
 
 format:
     uv run ruff format .
