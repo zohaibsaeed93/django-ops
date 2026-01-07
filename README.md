@@ -18,6 +18,18 @@ uv run djangoops init --django-module config
 
 Use `--project-name my-app` when the directory name should not be the DjangoOps project name. The command creates `djangoops.yaml` and refuses to overwrite an existing file. This file stores project metadata and service enablement only; credentials, private keys, database passwords, S3 secrets, and tokens belong in environment/runtime secret inputs, not in `djangoops.yaml`.
 
+## Generate the Phase 0 Compose stack
+
+From the same project directory, generate the deterministic deployment topology:
+
+```bash
+uv run djangoops compose
+```
+
+The command reads `djangoops.yaml` and creates `docker-compose.yml` without overwriting an existing file. The generated stack includes the enabled Django, PostgreSQL, Redis, Celery worker, and Celery Beat services. PostgreSQL and Redis stay on the internal Compose network; the Django service exposes port 8000 only to that network for later Traefik integration.
+
+Runtime secrets remain outside generated artifacts. Put values such as `POSTGRES_PASSWORD`, Django `SECRET_KEY`, and application credentials in the ignored `.env`/runtime environment boundary. Compose generation does **not** start containers, connect to a VPS, configure HTTPS, or perform deployment.
+
 ## Development
 
 Python development is pinned to Python 3.12 and uses `uv` for dependency and environment management.
