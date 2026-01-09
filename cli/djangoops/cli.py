@@ -9,6 +9,7 @@ from pathlib import Path
 
 from djangoops.compose import COMPOSE_FILENAME, generate_compose
 from djangoops.config import DjangoOpsConfig, write_new_config
+from djangoops.deploy import DeployError, DeploymentTarget, deploy_project
 
 CONFIG_FILENAME = "djangoops.yaml"
 
@@ -49,6 +50,34 @@ def build_parser() -> argparse.ArgumentParser:
         default=COMPOSE_FILENAME,
         help=f"output path (default: {COMPOSE_FILENAME})",
     )
+
+    deploy_parser = subparsers.add_parser(
+        "deploy",
+        help="deploy the generated Compose stack to one VPS over direct SSH",
+    )
+    deploy_parser.add_argument("--host", required=True, help="trusted VPS DNS name or IPv4 host")
+    deploy_parser.add_argument("--user", required=True, help="remote SSH user")
+    deploy_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
+    deploy_parser.add_argument(
+        "--remote-base",
+        required=True,
+        help="absolute remote project directory, for example /srv/djangoops/myapp",
+    )
+    deploy_parser.add_argument(
+        "--identity-file",
+        type=Path,
+        help="optional local SSH private-key path; key contents are never read by DjangoOps",
+    )
+    deploy_parser.add_argument(
+        "--config",
+        default=CONFIG_FILENAME,
+        help=f"configuration path (default: {CONFIG_FILENAME})",
+    )
+    deploy_parser.add_argument(
+        "--compose-file",
+        default=COMPOSE_FILENAME,
+        help=f"generated Compose path (default: {COMPOSE_FILENAME})",
+    )
     return parser
 
 
@@ -59,13 +88,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "init":
         project_name = args.project_name if args.project_name is not None else Path.cwd().name
-        target = Path.cwd() / CONFIG_FILENAME
+        config_target = Path.cwd() / CONFIG_FILENAME
         try:
             config = DjangoOpsConfig.create(
                 project_name=project_name,
                 django_module=args.django_module,
             )
-            write_new_config(target, config)
+            write_new_config(config_target, config)
         except FileExistsError:
             print(
                 f"error: {CONFIG_FILENAME} already exists; refusing to overwrite it",
@@ -75,7 +104,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         except (OSError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
-        print(f"Created {target}")
+        print(f"Created {config_target}")
         return 0
 
     if args.command == "compose":
@@ -93,6 +122,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 2
         print(f"Created {output_path}")
+        return 0
+
+    if args.command == "deploy":
+        try:
+            deploy_target = DeploymentTarget.create(
+                host=args.host,
+                user=args.user,
+                port=args.port,
+                remote_base=args.remote_base,
+                identity_file=args.identity_file,
+            )
+            release_id = deploy_project(
+                project_root=Path.cwd(),
+                config_path=Path(args.config),
+                compose_path=Path(args.compose_file),
+                target=deploy_target,
+            )
+        except (DeployError, OSError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        print(f"Deployed release {release_id}")
         return 0
 
     parser.error("unsupported command")
