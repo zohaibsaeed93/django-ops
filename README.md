@@ -30,6 +30,33 @@ The command reads `djangoops.yaml` and creates `docker-compose.yml` without over
 
 Runtime secrets remain outside generated artifacts. Put values such as `POSTGRES_PASSWORD`, Django `SECRET_KEY`, and application credentials in the ignored `.env`/runtime environment boundary. Compose generation does **not** start containers, connect to a VPS, configure HTTPS, or perform deployment.
 
+## Deploy to one VPS over direct SSH
+
+Phase 0 uses the system OpenSSH client directly; it does **not** install or run a persistent deployment agent. Before deploying, the VPS must already have OpenSSH access, Docker with the Compose plugin, a trusted host key in the operator's normal `known_hosts`, and the runtime environment file provisioned at the stable remote secret boundary:
+
+```text
+/srv/djangoops/my-app/shared/.env
+```
+
+DjangoOps never uploads that `.env` file. Provision it separately with host-appropriate permissions, then deploy from the Django project root after generating `docker-compose.yml`:
+
+```bash
+uv run djangoops deploy \
+  --host app.example.com \
+  --user deploy \
+  --remote-base /srv/djangoops/my-app
+```
+
+Use `--port` for a non-default SSH port and `--identity-file /path/to/key` when OpenSSH should use a specific private-key file. DjangoOps passes the path to `ssh`; it does not read or print private-key contents. The deployment archive excludes `.env` variants, common PEM/key/certificate files, VCS state, virtual environments, caches, and symlinks; application-specific credential files must still remain outside the project tree or be handled through the runtime secret boundary. Host-key checking remains OpenSSH's normal secure default; DjangoOps does not add `StrictHostKeyChecking=no` or a known-host bypass.
+
+Each deployment is uploaded under `<remote-base>/releases/<release-id>`. The release links its local `.env` path to `<remote-base>/shared/.env`, then starts the generated Compose stack with the stable Compose project name from `djangoops.yaml`. That stable identity keeps named PostgreSQL/Redis volumes attached across timestamped release directories. Only after Compose startup succeeds is `<remote-base>/current` atomically switched to the new release.
+
+If upload fails, the existing `current` release is not changed and DjangoOps only attempts to remove the newly-created staging release. Before startup, DjangoOps records the exact pre-deployment `current` target in a bounded rollback pointer. If Compose startup or pointer activation fails—even when the remote switch completed but the SSH client could not observe its exit status—recovery uses that saved pre-deployment state instead of inferring it from post-failure `current`. The rollback and temporary activation pointers are removed after successful activation or bounded recovery cleanup. Existing release directories remain available; no `docker compose down -v`, volume pruning, broad host cleanup, or other destructive data operation is used.
+
+Expected operational errors return a non-zero CLI status without a Python traceback. SSH/remote command output is intentionally not echoed by DjangoOps so runtime secret values from the host cannot accidentally leak into CLI logs.
+
+**Migration safety is not part of this deployment slice.** `djangoops deploy` does not run `manage.py migrate`. Migration pre-flight and automatic rollback are the following Phase 0 capability, and HTTPS, S3, backups, diagnostics, the Go agent, dashboard, Kubernetes, and observability remain outside this command.
+
 ## Development
 
 Python development is pinned to Python 3.12 and uses `uv` for dependency and environment management.
