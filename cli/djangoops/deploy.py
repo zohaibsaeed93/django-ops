@@ -31,12 +31,7 @@ _EXCLUDED_DIRS: Final = {
     "node_modules",
     "venv",
 }
-_EXCLUDED_NAMES: Final = {
-    ".env",
-    ".secrets",
-    "id_ed25519",
-    "id_rsa",
-}
+_EXCLUDED_NAMES: Final = {".env", ".secrets", "id_ed25519", "id_rsa"}
 _EXCLUDED_SUFFIXES: Final = {".key", ".pem", ".p12", ".pfx"}
 
 
@@ -74,13 +69,7 @@ class DeploymentTarget:
         _validate_remote_base(remote_base)
         if identity_file is not None and not identity_file.is_file():
             raise ValueError(f"SSH identity file does not exist: {identity_file}")
-        return cls(
-            host=host,
-            user=user,
-            port=port,
-            remote_base=remote_base,
-            identity_file=identity_file,
-        )
+        return cls(host, user, port, remote_base, identity_file)
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +107,7 @@ def deploy_project(
     target: DeploymentTarget,
     now: datetime | None = None,
 ) -> str:
-    """Upload, start, and atomically activate one staged release."""
+    """Upload, start, migrate, and atomically activate one staged release."""
     config = load_config(config_path)
     if not compose_path.is_file():
         raise DeployError(f"{compose_path.name} does not exist; run 'djangoops compose' first")
@@ -129,12 +118,11 @@ def deploy_project(
     except ValueError as exc:
         raise DeployError("config and Compose files must be inside the project directory") from exc
 
-    release_id = _release_id(now)
     plan = DeploymentPlan(
         project_root=root,
         project_name=config.project.name,
         target=target,
-        release_id=release_id,
+        release_id=_release_id(now),
         compose_file=compose_relative.as_posix(),
     )
     archive = _build_archive(root)
@@ -144,32 +132,41 @@ def deploy_project(
     except DeployError:
         _cleanup_release(plan)
         raise
-
     try:
         _capture_previous_current(plan)
     except DeployError:
         _cleanup_release(plan)
         raise
-
     try:
         _start_release(plan)
     except DeployError:
-        _restore_or_stop_failed_release(plan)
-        _cleanup_previous_pointer(plan)
-        _cleanup_release(plan)
+        _rollback_failed_staged_release(plan)
         raise
-
+    try:
+        _migration_preflight(plan)
+    except DeployError:
+        _rollback_failed_staged_release(plan)
+        raise
+    try:
+        _run_migrations(plan)
+    except DeployError:
+        _rollback_failed_staged_release(plan)
+        raise
     try:
         _activate_release(plan)
-    except DeployError:
+    except DeployError as exc:
         _restore_or_stop_failed_release(plan)
         _cleanup_pending_pointer(plan)
         _cleanup_previous_pointer(plan)
         _cleanup_release(plan)
-        raise
+        raise DeployError(
+            "release activation failed after Django migrations completed; previous application "
+            "release restoration was attempted. The database schema may no longer be compatible "
+            "with the restored release and requires operator inspection"
+        ) from exc
 
     _cleanup_previous_pointer(plan)
-    return release_id
+    return plan.release_id
 
 
 def _release_id(now: datetime | None) -> str:
@@ -184,8 +181,7 @@ def _build_archive(project_root: Path) -> bytes:
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz", format=tarfile.PAX_FORMAT) as archive:
         for path in _iter_deploy_files(project_root):
-            relative = path.relative_to(project_root)
-            archive.add(path, arcname=relative.as_posix(), recursive=False)
+            archive.add(path, arcname=path.relative_to(project_root).as_posix(), recursive=False)
     return buffer.getvalue()
 
 
@@ -215,13 +211,7 @@ def _is_secret_or_local_only(name: str) -> bool:
 
 
 def _ssh_argv(target: DeploymentTarget, remote_command: str) -> list[str]:
-    argv = [
-        "ssh",
-        "-o",
-        "BatchMode=yes",
-        "-p",
-        str(target.port),
-    ]
+    argv = ["ssh", "-o", "BatchMode=yes", "-p", str(target.port)]
     if target.identity_file is not None:
         argv.extend(["-i", str(target.identity_file)])
     argv.extend([f"{target.user}@{target.host}", remote_command])
@@ -236,10 +226,7 @@ def _run_ssh(
 ) -> None:
     try:
         result = subprocess.run(
-            _ssh_argv(target, remote_command),
-            input=input_bytes,
-            capture_output=True,
-            check=False,
+            _ssh_argv(target, remote_command), input=input_bytes, capture_output=True, check=False
         )
     except OSError as exc:
         raise DeployError("unable to execute the system OpenSSH client") from exc
@@ -257,7 +244,6 @@ def _upload_release(plan: DeploymentPlan, archive: bytes) -> None:
 
 
 def _capture_previous_current(plan: DeploymentPlan) -> None:
-    """Persist pre-deploy current state before startup or pointer activation."""
     current = shlex.quote(plan.current_path)
     previous = shlex.quote(plan.previous_path)
     command = (
@@ -266,9 +252,7 @@ def _capture_previous_current(plan: DeploymentPlan) -> None:
         f"previous_target=$(readlink -f -- {current}); "
         'test -n "$previous_target"; '
         f'ln -sfn -- "$previous_target" {previous}; '
-        "else "
-        f"rm -f -- {previous}; "
-        "fi"
+        f"else rm -f -- {previous}; fi"
     )
     try:
         _run_ssh(plan.target, command)
@@ -276,17 +260,17 @@ def _capture_previous_current(plan: DeploymentPlan) -> None:
         raise DeployError("unable to preserve the pre-deployment current release") from exc
 
 
+def _compose_prefix(plan: DeploymentPlan) -> str:
+    return f"docker compose -p {shlex.quote(plan.project_name)} -f {shlex.quote(plan.compose_file)}"
+
+
 def _start_release(plan: DeploymentPlan) -> None:
     release = shlex.quote(plan.release_dir)
     shared_env = shlex.quote(plan.shared_env_path)
-    project = shlex.quote(plan.project_name)
-    compose = shlex.quote(plan.compose_file)
     command = (
         "set -eu; "
-        f"test -f {shared_env}; "
-        f"ln -sfn {shared_env} {release}/.env; "
-        f"cd {release}; "
-        f"docker compose -p {project} -f {compose} up -d --build"
+        f"test -f {shared_env}; ln -sfn {shared_env} {release}/.env; "
+        f"cd {release}; {_compose_prefix(plan)} up -d --build"
     )
     try:
         _run_ssh(plan.target, command)
@@ -296,16 +280,50 @@ def _start_release(plan: DeploymentPlan) -> None:
         ) from exc
 
 
+def _migration_preflight(plan: DeploymentPlan) -> None:
+    release = shlex.quote(plan.release_dir)
+    command = (
+        f"set -eu; cd {release}; {_compose_prefix(plan)} exec -T web "
+        "python manage.py migrate --plan --noinput"
+    )
+    try:
+        _run_ssh(plan.target, command)
+    except DeployError as exc:
+        raise DeployError(
+            "Django migration pre-flight failed; staged release rollback was attempted"
+        ) from exc
+
+
+def _run_migrations(plan: DeploymentPlan) -> None:
+    release = shlex.quote(plan.release_dir)
+    command = (
+        f"set -eu; cd {release}; {_compose_prefix(plan)} exec -T web "
+        "python manage.py migrate --noinput"
+    )
+    try:
+        _run_ssh(plan.target, command)
+    except DeployError as exc:
+        raise DeployError(
+            "Django migration failed; previous application release restoration was attempted. "
+            "Database schema changes may have been partially applied and require operator "
+            "inspection"
+        ) from exc
+
+
+def _rollback_failed_staged_release(plan: DeploymentPlan) -> None:
+    _restore_or_stop_failed_release(plan)
+    _cleanup_previous_pointer(plan)
+    _cleanup_release(plan)
+
+
 def _activate_release(plan: DeploymentPlan) -> None:
     base = shlex.quote(plan.target.remote_base)
     release = shlex.quote(plan.release_dir)
     current = shlex.quote(plan.current_path)
     pending = shlex.quote(f"{plan.target.remote_base}/.current-{plan.release_id}")
     command = (
-        "set -eu; "
-        f"mkdir -p {base}/releases {base}/shared; "
-        f"ln -sfn {release} {pending}; "
-        f"mv -Tf {pending} {current}"
+        f"set -eu; mkdir -p {base}/releases {base}/shared; "
+        f"ln -sfn {release} {pending}; mv -Tf {pending} {current}"
     )
     try:
         _run_ssh(plan.target, command)
@@ -314,35 +332,23 @@ def _activate_release(plan: DeploymentPlan) -> None:
 
 
 def _restore_or_stop_failed_release(plan: DeploymentPlan) -> None:
-    """Recover from the saved pre-deploy state, never post-failure current state."""
     current = shlex.quote(plan.current_path)
     previous = shlex.quote(plan.previous_path)
     restore = shlex.quote(f"{plan.target.remote_base}/.restore-{plan.release_id}")
     release = shlex.quote(plan.release_dir)
-    project = shlex.quote(plan.project_name)
-    compose = shlex.quote(plan.compose_file)
     command = (
         "set -eu; "
-        f"if test -L {previous}; then "
-        f"previous_target=$(readlink -- {previous}); "
+        f"if test -L {previous}; then previous_target=$(readlink -- {previous}); "
         'test -n "$previous_target"; '
-        f'ln -sfn -- "$previous_target" {restore}; '
-        f"mv -Tf {restore} {current}; "
-        'cd "$previous_target"; '
-        f"docker compose -p {project} -f {compose} up -d --build; "
-        "else "
-        f"if test -L {current}; then "
-        f"current_target=$(readlink -- {current}); "
-        f'if test "$current_target" = {release}; then rm -f -- {current}; fi; '
-        "fi; "
-        f"cd {release}; docker compose -p {project} -f {compose} down; "
-        "fi"
+        f'ln -sfn -- "$previous_target" {restore}; mv -Tf {restore} {current}; '
+        f'cd "$previous_target"; {_compose_prefix(plan)} up -d --build; '
+        f"else if test -L {current}; then current_target=$(readlink -- {current}); "
+        f'if test "$current_target" = {release}; then rm -f -- {current}; fi; fi; '
+        f"cd {release}; {_compose_prefix(plan)} down; fi"
     )
     try:
         _run_ssh(plan.target, command)
     except DeployError:
-        # Preserve the original deployment error. No -v/volume prune is ever used;
-        # any remaining release directory is still bounded for operator recovery.
         return
 
 
@@ -370,10 +376,8 @@ def _cleanup_previous_pointer(plan: DeploymentPlan) -> None:
 def _cleanup_release(plan: DeploymentPlan) -> None:
     if not _RELEASE_RE.fullmatch(plan.release_id):
         return
-    release = shlex.quote(plan.release_dir)
-    command = f"rm -rf -- {release}"
     try:
-        _run_ssh(plan.target, command)
+        _run_ssh(plan.target, f"rm -rf -- {shlex.quote(plan.release_dir)}")
     except DeployError:
         return
 

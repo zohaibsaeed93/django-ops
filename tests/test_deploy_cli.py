@@ -83,15 +83,17 @@ def test_successful_deploy_orders_upload_snapshot_start_then_activation(
     )
 
     assert release.startswith("r20260109T053000Z-")
-    assert len(calls) == 5
+    assert len(calls) == 7
     assert calls[0][1] is True
     assert "tar -xzf -" in calls[0][0]
     assert ".previous-r20260109T053000Z-" in calls[1][0]
     assert "docker compose -p sample-app" in calls[2][0]
-    assert "mv -Tf" in calls[3][0]
-    assert calls[4][0].startswith("rm -f -- ")
-    assert ".previous-r20260109T053000Z-" in calls[4][0]
-    assert "manage.py migrate" not in "\n".join(command for command, _ in calls)
+    assert "migrate --plan --noinput" in calls[3][0]
+    assert "migrate --noinput" in calls[4][0]
+    assert "--plan" not in calls[4][0]
+    assert "mv -Tf" in calls[5][0]
+    assert calls[6][0].startswith("rm -f -- ")
+    assert ".previous-r20260109T053000Z-" in calls[6][0]
 
 
 def test_upload_failure_does_not_touch_current_and_only_cleans_staging(
@@ -199,19 +201,22 @@ def test_activation_failure_removes_pending_and_saved_previous_pointer(
             now=datetime(2026, 1, 9, 5, 30, tzinfo=UTC),
         )
 
-    assert len(calls) == 8
+    assert len(calls) == 10
     assert ".previous-r20260109T053000Z-" in calls[1]
-    assert "mv -Tf" in calls[3]
-    recovery = calls[4]
+    assert "migrate --plan --noinput" in calls[3]
+    assert "migrate --noinput" in calls[4]
+    assert "--plan" not in calls[4]
+    assert "mv -Tf" in calls[5]
+    recovery = calls[6]
     assert ".previous-r20260109T053000Z-" in recovery
     assert " down; " in recovery
     assert " down -v" not in recovery
     assert "volume prune" not in recovery
-    assert calls[5].startswith("rm -f -- ")
-    assert ".current-r20260109T053000Z-" in calls[5]
-    assert calls[6].startswith("rm -f -- ")
-    assert ".previous-r20260109T053000Z-" in calls[6]
-    assert calls[7].startswith("rm -rf -- ")
+    assert calls[7].startswith("rm -f -- ")
+    assert ".current-r20260109T053000Z-" in calls[7]
+    assert calls[8].startswith("rm -f -- ")
+    assert ".previous-r20260109T053000Z-" in calls[8]
+    assert calls[9].startswith("rm -rf -- ")
 
 
 def test_ambiguous_activation_failure_restores_exact_pre_activation_release(
