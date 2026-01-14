@@ -1,44 +1,64 @@
 # DjangoOps
 
-DjangoOps is an opinionated operations platform for production Django applications. It targets the repeated integration work around Django, PostgreSQL, Redis, Celery, Docker Compose, HTTPS, backups, and deployment diagnostics with a Django-aware workflow.
+DjangoOps is an opinionated operations platform for production Django applications. It targets repeated Django integration work around PostgreSQL, Redis, Celery, Docker Compose, HTTPS, backups, deployment safety, and Django-aware diagnostics.
 
 ## Current phase
 
-Development is intentionally limited to **Phase 0 (MVP)**. The persistent Go deploy agent, gRPC transport, dashboard/GraphQL layer, Kubernetes target, and observability stack are later-phase work and are not part of the current implementation surface.
-
-Phase 0 will ultimately provide the CLI and Django control-plane foundation, Docker Compose generation, direct-SSH deployment, migration safety and rollback, S3-compatible storage, Traefik HTTPS, Django-aware health checks, and backups. Phase 1 does not begin until Phase 0 has been dogfooded on a real Django application.
+Development is intentionally limited to **Phase 0 (MVP)**. Persistent Go agents/gRPC, dashboard/GraphQL, Kubernetes/Helm, and observability are later-phase work.
 
 ## Initialize a project
 
-After `uv sync --group dev`, create the non-secret Phase 0 project configuration from your Django project directory:
+After `uv sync --group dev`, create the non-secret configuration:
 
 ```bash
-uv run djangoops init --django-module config
+uv run djangoops init \
+  --django-module config \
+  --hostname app.example.com \
+  --acme-email ops@example.com \
+  --storage-endpoint-url https://s3.example-provider.com \
+  --storage-region us-east-1 \
+  --static-bucket my-app-static \
+  --media-bucket my-app-media
 ```
 
-Use `--project-name my-app` when the directory name should not be the DjangoOps project name. The command creates `djangoops.yaml` and refuses to overwrite an existing file. This file stores project metadata and service enablement only; credentials, private keys, database passwords, S3 secrets, and tokens belong in environment/runtime secret inputs, not in `djangoops.yaml`.
+Use `--project-name my-app` when the directory name should not be the project name. `djangoops.yaml` contains only non-secret project, TLS, and object-storage metadata. S3 access keys, secret keys, database passwords, Django `SECRET_KEY`, SSH keys, and tokens must remain outside it.
+
+The hostname must resolve publicly to the deployment VPS before certificate issuance. The storage endpoint is an external S3-compatible service; DjangoOps does not run or proxy object storage and does not install MinIO in production.
 
 ## Generate the Phase 0 Compose stack
-
-From the same project directory, generate the deterministic deployment topology:
 
 ```bash
 uv run djangoops compose
 ```
 
-The command reads `djangoops.yaml` and creates `docker-compose.yml` without overwriting an existing file. The generated stack includes the enabled Django, PostgreSQL, Redis, Celery worker, and Celery Beat services. PostgreSQL and Redis stay on the internal Compose network; the Django service exposes port 8000 only to that network for later Traefik integration.
+The generated stack contains Traefik plus the enabled Django/PostgreSQL/Redis/Celery services. Only Traefik publishes host ports (`80` and `443`). Django port `8000`, PostgreSQL, and Redis remain internal to Compose. Traefik redirects HTTP to HTTPS, routes the configured hostname to Django, and obtains Let's Encrypt certificates through ACME. Certificate state is persisted in the `traefik_acme` named volume and the Docker socket is mounted read-only for service discovery.
 
-Runtime secrets remain outside generated artifacts. Put values such as `POSTGRES_PASSWORD`, Django `SECRET_KEY`, and application credentials in the ignored `.env`/runtime environment boundary. Compose generation does **not** start containers, connect to a VPS, configure HTTPS, or perform deployment.
+Runtime `.env` must provide at least the required application/database values plus object-storage credentials:
+
+```text
+AWS_ACCESS_KEY_ID=<provisioned outside the repository>
+AWS_SECRET_ACCESS_KEY=<provisioned outside the repository>
+POSTGRES_PASSWORD=<provisioned outside the repository>
+```
+
+DjangoOps passes these non-secret S3 settings to application containers from `djangoops.yaml`: `DJANGOOPS_S3_ENDPOINT_URL`, `DJANGOOPS_S3_STATIC_BUCKET`, `DJANGOOPS_S3_MEDIA_BUCKET`, and `AWS_REGION` when configured. Applications can map that contract into `django-storages`/their Django storage backend. Secret credential values are never rendered into generated Compose YAML. Provision S3 credentials with least privilege for only the configured buckets and required object operations; do not use account-wide administrative keys.
+
+## VPS, DNS, and TLS prerequisites
+
+Before deployment:
+
+- the configured hostname must resolve to the VPS;
+- inbound TCP 80 and 443 must be reachable from the public internet for normal traffic and Let's Encrypt HTTP-01 issuance;
+- Docker with the Compose plugin and OpenSSH access must already exist on the VPS;
+- the operator's normal `known_hosts` must trust the VPS host key;
+- `/srv/djangoops/<project>/shared/.env` must be provisioned separately with runtime secrets and S3 credentials;
+- the configured static/media buckets must already exist and the supplied S3 credentials must have the intended permissions.
+
+Certificate issuance depends on public DNS/reachability. DjangoOps does not bypass those checks or disable SSH host-key verification.
 
 ## Deploy to one VPS over direct SSH
 
-Phase 0 uses the system OpenSSH client directly; it does **not** install or run a persistent deployment agent. Before deploying, the VPS must already have OpenSSH access, Docker with the Compose plugin, a trusted host key in the operator's normal `known_hosts`, and the runtime environment file provisioned at the stable remote secret boundary:
-
-```text
-/srv/djangoops/my-app/shared/.env
-```
-
-DjangoOps never uploads that `.env` file. Provision it separately with host-appropriate permissions, then deploy from the Django project root after generating `docker-compose.yml`:
+Phase 0 uses the system OpenSSH client directly and installs no persistent deployment agent:
 
 ```bash
 uv run djangoops deploy \
@@ -47,43 +67,27 @@ uv run djangoops deploy \
   --remote-base /srv/djangoops/my-app
 ```
 
-Use `--port` for a non-default SSH port and `--identity-file /path/to/key` when OpenSSH should use a specific private-key file. DjangoOps passes the path to `ssh`; it does not read or print private-key contents. The deployment archive excludes `.env` variants, common PEM/key/certificate files, VCS state, virtual environments, caches, and symlinks; application-specific credential files must still remain outside the project tree or be handled through the runtime secret boundary. Host-key checking remains OpenSSH's normal secure default; DjangoOps does not add `StrictHostKeyChecking=no` or a known-host bypass.
+Use `--port` for a non-default SSH port and `--identity-file /path/to/key` for a specific key path. DjangoOps never reads or prints private-key contents and does not upload `.env`.
 
-Each deployment is uploaded under `<remote-base>/releases/<release-id>`. The release links its local `.env` path to `<remote-base>/shared/.env`, then starts the generated Compose stack with the stable Compose project name from `djangoops.yaml`. That stable identity keeps named PostgreSQL/Redis volumes attached across timestamped release directories.
+Deployments use staged release directories and a stable Compose project identity. DjangoOps starts the staged stack, runs `manage.py migrate --plan --noinput`, then `manage.py migrate --noinput`, and atomically activates the release only after migration succeeds. Existing direct-SSH, custom Compose-path, and rollback behavior remains unchanged.
 
-After startup succeeds, DjangoOps runs a non-mutating Django migration pre-flight in the staged release with `manage.py migrate --plan --noinput`. Only if that succeeds does it execute `manage.py migrate --noinput`, exactly once, still against the staged release. The atomic `<remote-base>/current` switch happens only after the migration command reports success. Custom project-relative Compose paths are used consistently for startup, migration checks, migration execution, and recovery.
+Recovery restores/restarts the saved previous application release when possible. It never uses `docker compose down -v`, volume pruning, database drop/recreate, certificate-state deletion, bucket/object deletion, or guessed reverse migrations. PostgreSQL/Redis named volumes, `traefik_acme`, and external S3 data therefore survive application-release rollback. If migrations may have changed the schema, DjangoOps warns that operator inspection may be required instead of claiming arbitrary database rollback.
 
-If upload fails, the existing `current` release is not changed and DjangoOps only attempts to remove the newly-created staging release. Before startup, DjangoOps records the exact pre-deployment `current` target in a bounded rollback pointer. If Compose startup, migration pre-flight, migration execution, or pointer activation fails—even when SSH returns an ambiguous failure—automatic recovery restores and restarts the exact saved previous application release when one exists. On a first deployment it stops only the staged Compose runtime. Recovery never uses `docker compose down -v`, volume pruning, database drop/recreate, broad host cleanup, or another destructive persistent-data operation.
-
-Migration rollback has an explicit limit: DjangoOps does **not** claim that arbitrary database schema changes can be automatically reversed. A migration can be non-atomic or may have applied some operations before failing. In that case DjangoOps restores the previous application release/runtime and returns a non-zero migration error telling the operator that database inspection may be required; it does not guess migration targets or invent a generic database undo algorithm.
-
-The saved rollback and temporary activation pointers are removed after successful activation or bounded recovery cleanup. Existing release directories remain available for operator inspection. Expected operational errors return a non-zero CLI status without a Python traceback. SSH/remote stdout and stderr are intentionally not echoed by DjangoOps so database URLs, Django settings output, or other runtime secret values from the host cannot accidentally leak into CLI logs.
-
-HTTPS, S3, backups, diagnostics, the Go agent, dashboard, Kubernetes, and observability remain outside this Phase 0 deployment slice.
+SSH/remote stdout and stderr are intentionally not echoed so runtime secrets cannot accidentally leak into CLI logs.
 
 ## Development
 
-Python development is pinned to Python 3.12 and uses `uv` for dependency and environment management.
+Python development is pinned to Python 3.12 and uses `uv`.
 
 ```bash
 uv sync --group dev
-just lint
-just format-check
-just test
-```
-
-Run the complete local quality gate with:
-
-```bash
 just check
 ```
 
-The same lint, formatting, type-checking, and test checks run in GitHub Actions.
+The same Ruff lint/format, strict mypy, and pytest checks run in GitHub Actions.
 
 ## Repository layout
 
 - `controlplane/` — Django + DRF control plane (Phase 0+)
 - `cli/` — Python CLI (Phase 0+)
 - `docs/` — project and operational documentation
-
-Later-phase directories are added only when their roadmap gates are reached.

@@ -12,13 +12,13 @@ from djangoops.config import DjangoOpsConfig, parse_config, write_new_text
 COMPOSE_FILENAME = "docker-compose.yml"
 POSTGRES_IMAGE = "postgres:16"
 REDIS_IMAGE = "redis:7-alpine"
+TRAEFIK_IMAGE = "traefik:v3.1.7"
 _APP_ENV_FILE = [".env"]
 _APP_BUILD = {"context": "."}
 _RESTART_POLICY = "unless-stopped"
 
 
 def load_config(path: Path) -> DjangoOpsConfig:
-    """Read and validate a DjangoOps project configuration."""
     try:
         text = path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
@@ -27,9 +27,30 @@ def load_config(path: Path) -> DjangoOpsConfig:
 
 
 def render_compose(config: DjangoOpsConfig) -> str:
-    """Render stable Compose YAML for the configured Phase 0 topology."""
     services: dict[str, Any] = {}
-    volumes: dict[str, Any] = {}
+    volumes: dict[str, Any] = {"traefik_acme": {}}
+
+    services["traefik"] = {
+        "image": TRAEFIK_IMAGE,
+        "restart": _RESTART_POLICY,
+        "command": [
+            "--providers.docker=true",
+            "--providers.docker.exposedbydefault=false",
+            "--entrypoints.web.address=:80",
+            "--entrypoints.web.http.redirections.entrypoint.to=websecure",
+            "--entrypoints.web.http.redirections.entrypoint.scheme=https",
+            "--entrypoints.websecure.address=:443",
+            f"--certificatesresolvers.letsencrypt.acme.email={config.tls.acme_email}",
+            "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json",
+            "--certificatesresolvers.letsencrypt.acme.httpchallenge=true",
+            "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web",
+        ],
+        "ports": ["80:80", "443:443"],
+        "volumes": [
+            "/var/run/docker.sock:/var/run/docker.sock:ro",
+            "traefik_acme:/letsencrypt",
+        ],
+    }
 
     dependencies = _infrastructure_dependencies(config)
     services["web"] = {
@@ -41,8 +62,17 @@ def render_compose(config: DjangoOpsConfig) -> str:
             "0.0.0.0:8000",
         ],
         "env_file": list(_APP_ENV_FILE),
+        "environment": _storage_environment(config),
         "restart": _RESTART_POLICY,
         "expose": ["8000"],
+        "labels": [
+            "traefik.enable=true",
+            f"traefik.http.routers.web.rule=Host(`{config.tls.hostname}`)",
+            "traefik.http.routers.web.entrypoints=websecure",
+            "traefik.http.routers.web.tls=true",
+            "traefik.http.routers.web.tls.certresolver=letsencrypt",
+            "traefik.http.services.web.loadbalancer.server.port=8000",
+        ],
     }
     if dependencies:
         services["web"]["depends_on"] = dependencies
@@ -60,7 +90,7 @@ def render_compose(config: DjangoOpsConfig) -> str:
             "healthcheck": {
                 "test": [
                     "CMD-SHELL",
-                    "pg_isready -U $${POSTGRES_USER:-djangoops} -d $${POSTGRES_DB:-djangoops}",
+                    ("pg_isready -U $${POSTGRES_USER:-djangoops} -d $${POSTGRES_DB:-djangoops}"),
                 ],
                 "interval": "10s",
                 "timeout": "5s",
@@ -89,17 +119,26 @@ def render_compose(config: DjangoOpsConfig) -> str:
     if config.services.celery_beat:
         services["celery_beat"] = _celery_service(config, ["beat", "--loglevel=INFO"])
 
-    document: dict[str, Any] = {"services": services}
-    if volumes:
-        document["volumes"] = volumes
+    document = {"services": services, "volumes": volumes}
     return yaml.safe_dump(document, sort_keys=False, default_flow_style=False)
 
 
 def generate_compose(config_path: Path, output_path: Path) -> None:
-    """Validate configuration, render Compose, then create output exclusively."""
     config = load_config(config_path)
-    rendered = render_compose(config)
-    write_new_text(output_path, rendered)
+    write_new_text(output_path, render_compose(config))
+
+
+def _storage_environment(config: DjangoOpsConfig) -> dict[str, str]:
+    environment = {
+        "DJANGOOPS_S3_ENDPOINT_URL": config.storage.endpoint_url,
+        "DJANGOOPS_S3_STATIC_BUCKET": config.storage.static_bucket,
+        "DJANGOOPS_S3_MEDIA_BUCKET": config.storage.media_bucket,
+        "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID must be set}",
+        "AWS_SECRET_ACCESS_KEY": ("${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY must be set}"),
+    }
+    if config.storage.region is not None:
+        environment["AWS_REGION"] = config.storage.region
+    return environment
 
 
 def _infrastructure_dependencies(config: DjangoOpsConfig) -> dict[str, dict[str, str]]:
@@ -116,6 +155,7 @@ def _celery_service(config: DjangoOpsConfig, action: list[str]) -> dict[str, Any
         "build": dict(_APP_BUILD),
         "command": ["celery", "-A", _django_project_module(config), *action],
         "env_file": list(_APP_ENV_FILE),
+        "environment": _storage_environment(config),
         "restart": _RESTART_POLICY,
     }
     dependencies = _infrastructure_dependencies(config)
@@ -125,7 +165,6 @@ def _celery_service(config: DjangoOpsConfig, action: list[str]) -> dict[str, Any
 
 
 def _django_project_module(config: DjangoOpsConfig) -> str:
-    """Return the import package that owns wsgi.py and the Celery app."""
     module = config.django.module
     if module.endswith(".settings"):
         return module.removesuffix(".settings")

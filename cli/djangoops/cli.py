@@ -15,7 +15,6 @@ CONFIG_FILENAME = "djangoops.yaml"
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the small Phase 0 CLI surface."""
     parser = argparse.ArgumentParser(
         prog="djangoops",
         description="Django-specific operations tooling",
@@ -33,7 +32,33 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--django-module",
         required=True,
-        help="dotted Django project module, for example 'config' or 'myapp'",
+        help="dotted Django project module",
+    )
+    init_parser.add_argument(
+        "--hostname",
+        required=True,
+        help="public DNS hostname routed to the VPS",
+    )
+    init_parser.add_argument(
+        "--acme-email",
+        required=True,
+        help="Let's Encrypt/ACME contact email",
+    )
+    init_parser.add_argument(
+        "--storage-endpoint-url",
+        required=True,
+        help="S3-compatible endpoint URL (non-secret)",
+    )
+    init_parser.add_argument("--storage-region", help="optional S3-compatible region")
+    init_parser.add_argument(
+        "--static-bucket",
+        required=True,
+        help="S3-compatible static asset bucket",
+    )
+    init_parser.add_argument(
+        "--media-bucket",
+        required=True,
+        help="S3-compatible media asset bucket",
     )
 
     compose_parser = subparsers.add_parser(
@@ -55,13 +80,22 @@ def build_parser() -> argparse.ArgumentParser:
         "deploy",
         help="deploy the generated Compose stack to one VPS over direct SSH",
     )
-    deploy_parser.add_argument("--host", required=True, help="trusted VPS DNS name or IPv4 host")
+    deploy_parser.add_argument(
+        "--host",
+        required=True,
+        help="trusted VPS DNS name or IPv4 host",
+    )
     deploy_parser.add_argument("--user", required=True, help="remote SSH user")
-    deploy_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
+    deploy_parser.add_argument(
+        "--port",
+        type=int,
+        default=22,
+        help="SSH port (default: 22)",
+    )
     deploy_parser.add_argument(
         "--remote-base",
         required=True,
-        help="absolute remote project directory, for example /srv/djangoops/myapp",
+        help="absolute remote project directory",
     )
     deploy_parser.add_argument(
         "--identity-file",
@@ -82,7 +116,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Execute the CLI and return a process exit code."""
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -93,6 +126,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             config = DjangoOpsConfig.create(
                 project_name=project_name,
                 django_module=args.django_module,
+                hostname=args.hostname,
+                acme_email=args.acme_email,
+                storage_endpoint_url=args.storage_endpoint_url,
+                storage_region=args.storage_region,
+                static_bucket=args.static_bucket,
+                media_bucket=args.media_bucket,
             )
             write_new_config(config_target, config)
         except FileExistsError:

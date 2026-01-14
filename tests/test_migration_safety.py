@@ -22,6 +22,16 @@ def _config_text() -> str:
                 "celery": True,
                 "celery_beat": True,
             },
+            "tls": {
+                "hostname": "app.example.com",
+                "acme_email": "ops@example.com",
+            },
+            "storage": {
+                "endpoint_url": "https://objects.example.com",
+                "region": "eu-west-1",
+                "static_bucket": "sample-static",
+                "media_bucket": "sample-media",
+            },
         },
         sort_keys=False,
     )
