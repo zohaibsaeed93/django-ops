@@ -75,6 +75,33 @@ Recovery restores/restarts the saved previous application release when possible.
 
 SSH/remote stdout and stderr are intentionally not echoed so runtime secrets cannot accidentally leak into CLI logs.
 
+## Check deployment health over direct SSH
+
+`djangoops health` is an on-demand, read-only Phase 0 diagnostic command. It uses the same validated OpenSSH target arguments as `deploy` and installs no persistent agent:
+
+```bash
+uv run djangoops health \
+  --host app.example.com \
+  --user deploy \
+  --remote-base /srv/djangoops/my-app
+```
+
+For automation, request one deterministic JSON document on stdout:
+
+```bash
+uv run djangoops health \
+  --host app.example.com \
+  --user deploy \
+  --remote-base /srv/djangoops/my-app \
+  --json
+```
+
+The report has `schema_version: 1`, an overall `healthy`/`unhealthy` status, and stable named checks for the active `current` release pointer, expected Compose service runtime/health state, `manage.py check --deploy`, Django database connectivity, and `manage.py migrate --check --noinput`. The command discovers the active release through the managed `current` pointer and runs Django checks inside that release's active web container.
+
+Exit status `0` means every health check passed. Exit status `1` means health was evaluated and the deployment is unhealthy; the complete report is still printed. Exit status `2` means the target was invalid or health could not be evaluated over SSH, so callers can distinguish transport/usage failures from an unhealthy deployment.
+
+Health diagnostics never print remote command output or read back `.env`, Django `SECRET_KEY`, database/S3 credentials, SSH private-key contents, or ACME material. They do not restart services, run migrations, change `current`, modify Compose state, or alter storage. `--port` and `--identity-file` behave exactly as with `deploy`, including `BatchMode=yes` and normal SSH host-key verification.
+
 ## Development
 
 Python development is pinned to Python 3.12 and uses `uv`.
