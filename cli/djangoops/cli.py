@@ -10,8 +10,25 @@ from pathlib import Path
 from djangoops.compose import COMPOSE_FILENAME, generate_compose
 from djangoops.config import DjangoOpsConfig, write_new_config
 from djangoops.deploy import DeployError, DeploymentTarget, deploy_project
+from djangoops.health import HealthTransportError, health_project
 
 CONFIG_FILENAME = "djangoops.yaml"
+
+
+def _add_ssh_target_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--host", required=True, help="trusted VPS DNS name or IPv4 host")
+    parser.add_argument("--user", required=True, help="remote SSH user")
+    parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
+    parser.add_argument(
+        "--remote-base",
+        required=True,
+        help="absolute remote project directory",
+    )
+    parser.add_argument(
+        "--identity-file",
+        type=Path,
+        help="optional local SSH private-key path; key contents are never read by DjangoOps",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -80,28 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
         "deploy",
         help="deploy the generated Compose stack to one VPS over direct SSH",
     )
-    deploy_parser.add_argument(
-        "--host",
-        required=True,
-        help="trusted VPS DNS name or IPv4 host",
-    )
-    deploy_parser.add_argument("--user", required=True, help="remote SSH user")
-    deploy_parser.add_argument(
-        "--port",
-        type=int,
-        default=22,
-        help="SSH port (default: 22)",
-    )
-    deploy_parser.add_argument(
-        "--remote-base",
-        required=True,
-        help="absolute remote project directory",
-    )
-    deploy_parser.add_argument(
-        "--identity-file",
-        type=Path,
-        help="optional local SSH private-key path; key contents are never read by DjangoOps",
-    )
+    _add_ssh_target_args(deploy_parser)
     deploy_parser.add_argument(
         "--config",
         default=CONFIG_FILENAME,
@@ -112,7 +108,33 @@ def build_parser() -> argparse.ArgumentParser:
         default=COMPOSE_FILENAME,
         help=f"generated Compose path (default: {COMPOSE_FILENAME})",
     )
+
+    health_parser = subparsers.add_parser(
+        "health",
+        help="run read-only Django-aware diagnostics over direct SSH",
+    )
+    _add_ssh_target_args(health_parser)
+    health_parser.add_argument(
+        "--compose-file",
+        default=COMPOSE_FILENAME,
+        help=f"deployed project-relative Compose path (default: {COMPOSE_FILENAME})",
+    )
+    health_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="emit one deterministic JSON document on stdout",
+    )
     return parser
+
+
+def _target_from_args(args: argparse.Namespace) -> DeploymentTarget:
+    return DeploymentTarget.create(
+        host=args.host,
+        user=args.user,
+        port=args.port,
+        remote_base=args.remote_base,
+        identity_file=args.identity_file,
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -165,24 +187,34 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "deploy":
         try:
-            deploy_target = DeploymentTarget.create(
-                host=args.host,
-                user=args.user,
-                port=args.port,
-                remote_base=args.remote_base,
-                identity_file=args.identity_file,
-            )
             release_id = deploy_project(
                 project_root=Path.cwd(),
                 config_path=Path(args.config),
                 compose_path=Path(args.compose_file),
-                target=deploy_target,
+                target=_target_from_args(args),
             )
         except (DeployError, OSError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
         print(f"Deployed release {release_id}")
         return 0
+
+    if args.command == "health":
+        try:
+            report = health_project(
+                _target_from_args(args),
+                compose_file=args.compose_file,
+            )
+        except (HealthTransportError, OSError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        if args.json:
+            print(report.to_json())
+        else:
+            for check in report.checks:
+                print(f"[{check.status.upper()}] {check.name}")
+            print(f"Overall: {report.overall_status.upper()}")
+        return 0 if report.healthy else 1
 
     parser.error("unsupported command")
     return 2
