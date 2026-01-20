@@ -27,9 +27,11 @@ BASE_INIT = [
     "sample-static",
     "--media-bucket",
     "sample-media",
+    "--backup-bucket",
+    "sample-backups",
 ]
 
-EXPECTED_CONFIG = """schema_version: 2
+EXPECTED_CONFIG = """schema_version: 3
 project:
   name: sample-app
 django:
@@ -47,6 +49,10 @@ storage:
   region: eu-west-1
   static_bucket: sample-static
   media_bucket: sample-media
+backup:
+  schedule: 17 2 * * *
+  bucket: sample-backups
+  prefix: djangoops-backups
 """
 
 PREVIOUS_SCHEMA_1_CONFIG = """schema_version: 1
@@ -82,12 +88,13 @@ def test_init_creates_deterministic_round_trippable_config(
     parsed = djangoops.config.parse_config(target.read_text(encoding="utf-8"))
     assert parsed.tls.hostname == "app.example.com"
     assert parsed.storage.static_bucket == "sample-static"
+    assert parsed.backup.bucket == "sample-backups"
     assert djangoops.config.render_config(parsed) == EXPECTED_CONFIG
     assert str(target) in capsys.readouterr().out
 
 
-def test_previous_schema_1_config_is_rejected_with_upgrade_guidance() -> None:
-    with pytest.raises(ValueError, match=r"schema_version 1.*recreate or upgrade.*TLS and S3"):
+def test_incomplete_schema_1_config_still_requires_tls_and_storage_upgrade() -> None:
+    with pytest.raises(ValueError, match=r"schema_version 1.*TLS and S3 storage"):
         djangoops.config.parse_config(PREVIOUS_SCHEMA_1_CONFIG)
 
 
@@ -128,6 +135,7 @@ def test_init_rejects_invalid_project_and_module_inputs_without_creating_file(
         ("--storage-region", "bad region"),
         ("--static-bucket", "Bad_Bucket"),
         ("--media-bucket", "a"),
+        ("--backup-bucket", "Bad_Backup"),
     ],
 )
 def test_init_rejects_invalid_network_and_storage_inputs_without_creating_file(
@@ -154,6 +162,7 @@ def test_config_contains_no_storage_credentials() -> None:
         None,
         "sample-static",
         "sample-media",
+        backup_bucket="sample-backups",
     )
     rendered = djangoops.config.render_config(config)
     assert "access_key" not in rendered.lower()
