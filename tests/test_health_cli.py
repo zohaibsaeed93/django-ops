@@ -74,6 +74,7 @@ def test_health_project_uses_batch_openssh_and_django_checks(
     assert "manage.py migrate --check --noinput" in remote
     assert "docker compose" in remote
     assert "docker-compose.yml" in remote
+    assert 'grep -Fx "$service"' in remote
     assert seen["kwargs"] == {
         "capture_output": True,
         "check": False,

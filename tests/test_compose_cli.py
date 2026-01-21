@@ -73,7 +73,8 @@ def test_compose_generates_https_ingress_and_full_stack(tmp_path: pathlib.Path) 
         "celery_beat",
     }
     traefik = services["traefik"]
-    assert traefik["image"] == "traefik:v3.1.7"
+    assert document["name"] == "sample-app"
+    assert traefik["image"] == "traefik:v3.7.1"
     assert traefik["ports"] == ["80:80", "443:443"]
     assert "/var/run/docker.sock:/var/run/docker.sock:ro" in traefik["volumes"]
     assert "traefik_acme:/letsencrypt" in traefik["volumes"]

@@ -12,7 +12,7 @@ from djangoops.config import DjangoOpsConfig, parse_config, write_new_text
 COMPOSE_FILENAME = "docker-compose.yml"
 POSTGRES_IMAGE = "postgres:16"
 REDIS_IMAGE = "redis:7-alpine"
-TRAEFIK_IMAGE = "traefik:v3.1.7"
+TRAEFIK_IMAGE = "traefik:v3.7.1"
 _APP_ENV_FILE = [".env"]
 _APP_BUILD = {"context": "."}
 _RESTART_POLICY = "unless-stopped"
@@ -119,7 +119,11 @@ def render_compose(config: DjangoOpsConfig) -> str:
     if config.services.celery_beat:
         services["celery_beat"] = _celery_service(config, ["beat", "--loglevel=INFO"])
 
-    document = {"services": services, "volumes": volumes}
+    document = {
+        "name": config.project.name,
+        "services": services,
+        "volumes": volumes,
+    }
     return yaml.safe_dump(document, sort_keys=False, default_flow_style=False)
 
 

@@ -1,0 +1,22 @@
+schema_version: 3
+project:
+  name: phase0-dogfood
+django:
+  module: dogfood.settings
+services:
+  postgres: true
+  redis: true
+  celery: true
+  celery_beat: true
+tls:
+  hostname: dogfood.example.net
+  acme_email: djangoops-dogfood@example.net
+storage:
+  endpoint_url: https://s3.example.net
+  region: us-east-1
+  static_bucket: djangoops-dogfood-static
+  media_bucket: djangoops-dogfood-media
+backup:
+  schedule: "17 2 * * *"
+  bucket: djangoops-dogfood-backups
+  prefix: phase0-dogfood

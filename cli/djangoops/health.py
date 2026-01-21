@@ -128,8 +128,9 @@ def _health_remote_command(remote_base: str, compose_file: str) -> str:
         f"running=$(docker compose -f {compose} ps --services "
         "--filter status=running 2>/dev/null) && "
         'test -n "$declared" && test -n "$running" && ok=1; '
-        'for service in $declared; do case " $running " in '
-        '*" $service "*) ;; *) ok=0 ;; esac; done; '
+        "for service in $declared; do "
+        'if printf "%s\\n" "$running" | grep -Fx "$service" >/dev/null; '
+        "then :; else ok=0; fi; done; "
         'test "$ok" -eq 1); then emit compose_services PASS; '
         "else emit compose_services FAIL; fi; "
         f'if (cd "$release" && docker compose -f {compose} exec -T web '

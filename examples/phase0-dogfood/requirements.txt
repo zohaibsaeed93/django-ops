@@ -1,0 +1,5 @@
+Django>=5.1,<5.2
+celery[redis]>=5.4,<5.5
+django-storages[s3]>=1.14,<1.15
+gunicorn>=23,<24
+psycopg[binary]>=3.2,<3.3
