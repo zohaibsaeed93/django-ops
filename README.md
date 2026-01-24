@@ -1,10 +1,12 @@
 # DjangoOps
 
-DjangoOps is an opinionated operations platform for production Django applications. It targets repeated Django integration work around PostgreSQL, Redis, Celery, Docker Compose, HTTPS, backups, deployment safety, and Django-aware diagnostics.
+DjangoOps is an opinionated operations platform for production Django applications. It keeps Django-specific deployment, backup, recovery, and diagnostics semantics rather than exposing a generic remote-shell or PaaS surface.
 
 ## Current phase
 
-Development is intentionally limited to **Phase 0 (MVP)**. Persistent Go agents/gRPC, dashboard/GraphQL, Kubernetes/Helm, and observability are later-phase work.
+**Phase 1 is active.** Phase 0 direct-SSH deploy/rollback, health, Compose generation, and backup/restore remain supported as the proven fallback path. Phase 1 adds a persistent Go `djangoops-agent` that initiates an outbound-only authenticated gRPC/TLS control channel for typed Django diagnostics. Dashboard/GraphQL, Kubernetes/Helm, generic container administration, arbitrary shell execution, and observability are not part of this phase.
+
+See [`docs/phase1-agent-channel.md`](docs/phase1-agent-channel.md) for the Phase 1 trust model, provisioning, diagnostics contract, cancellation, reconnect behavior, and rollback guidance. Phase 0 dogfood evidence remains in [`docs/phase0-dogfood.md`](docs/phase0-dogfood.md); the reusable Phase 0 operator workflow is preserved below.
 
 ## Initialize a project
 
@@ -153,19 +155,49 @@ Exit status `0` means every diagnostic passed. Exit status `1` means health was 
 
 Use `--port` and `--identity-file` exactly as with deploy. OpenSSH runs with `BatchMode=yes` and normal host-key verification remains in effect.
 
+## Phase 1 agent
+
+The Phase 1 agent requires non-secret endpoint/identity/project-root settings plus separately provisioned secret authentication material:
+
+```text
+DJANGOOPS_CONTROLPLANE_ENDPOINT=control.example.com:8443
+DJANGOOPS_CONTROLPLANE_SERVER_NAME=control.example.com
+DJANGOOPS_CONTROLPLANE_CA_FILE=/etc/djangoops/controlplane-ca.pem
+DJANGOOPS_AGENT_ID=prod-app-01
+DJANGOOPS_AGENT_AUTH_TOKEN=<provisioned outside repository>
+DJANGOOPS_PROJECT_ROOT=/srv/djangoops/my-app
+DJANGOOPS_COMPOSE_FILE=ops/compose.prod.yml
+```
+
+`DJANGOOPS_COMPOSE_FILE` is optional and defaults to `docker-compose.yml`. When set, it must remain a validated project-relative path; absolute paths, traversal, dot segments, and control characters are rejected.
+
+The agent opens no listening socket. TLS certificate-chain and hostname verification are mandatory; there is no insecure fallback. Authentication is sent only inside TLS and is never logged. The protocol exposes only allowlisted Django diagnostics scoped beneath `DJANGOOPS_PROJECT_ROOT`; it is not an arbitrary command or shell channel.
+
+The control-plane process similarly reads its TLS key/certificate and agent-token mapping from runtime configuration. `DJANGOOPS_AGENT_TOKENS_JSON` is secret runtime material, not project configuration. Diagnostic admission, completed-job retention, and queues are bounded; overload fails closed or applies bounded backpressure. Disconnect cancels unobserved work, reconnect announces fresh state, and completed/stale jobs are not replayed.
+
+Rollback of the Phase 1 task removes the persistent agent channel only. The direct-SSH Phase 0 deploy, recovery, health, backup scheduling, backup execution/listing, and explicit restore workflow above remains the supported fallback and does not require the agent.
+
 ## Development
 
-Python development is pinned to Python 3.12 and uses `uv`.
+Python development is pinned to Python 3.12 and uses `uv`. Phase 1 additionally uses Go 1.23 and reproducible protobuf generation.
 
 ```bash
 uv sync --group dev
-just check
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy cli/djangoops controlplane tests
+uv run pytest
+cd agent && go test ./...
+scripts/generate_proto.sh
+git diff --exit-code -- controlplane/generated agent/gen
 ```
 
-The same Ruff lint/format, strict mypy, and pytest checks run in GitHub Actions.
+GitHub Actions runs Python quality/regression checks, Go format/vet/tests, protobuf generation drift/contract checks, security assertions, and cross-language TLS integration tests.
 
 ## Repository layout
 
-- `controlplane/` — Django + DRF control plane (Phase 0+)
-- `cli/` — Python CLI (Phase 0+)
-- `docs/` — project and operational documentation
+- `controlplane/` — Django + DRF control plane plus the Phase 1 gRPC transport/application boundary; no dashboard or GraphQL
+- `cli/` — Python CLI and direct-SSH Phase 0 fallback
+- `agent/` — outbound-only Go diagnostic executor introduced in Phase 1
+- `proto/djangoops/agent/v1/` — versioned shared agent protocol contract
+- `docs/` — project, phase, and operational documentation

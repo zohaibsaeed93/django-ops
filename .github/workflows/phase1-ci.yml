@@ -1,0 +1,84 @@
+name: Phase 1 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "auto/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache-dependency-path: agent/go.sum
+      - name: Go format
+        run: test -z "$(gofmt -l .)"
+      - name: Go vet
+        run: go vet ./...
+      - name: Go tests
+        run: go test ./...
+
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - uses: astral-sh/setup-uv@v5
+      - name: Install protobuf generators
+        run: |
+          uv pip install --system grpcio-tools==1.71.0
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.6
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+      - name: Generation drift
+        run: |
+          scripts/generate_proto.sh
+          git diff --exit-code -- controlplane/generated agent/gen
+      - name: Protocol contract guard
+        run: |
+          grep -q 'package djangoops.agent.v1;' proto/djangoops/agent/v1/agent.proto
+          grep -q 'rpc Connect(stream AgentFrame) returns (stream ControlFrame);' proto/djangoops/agent/v1/agent.proto
+          ! grep -Eiq 'shell|command|exec' proto/djangoops/agent/v1/agent.proto
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache-dependency-path: agent/go.sum
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --group dev
+      - name: Cross-language TLS integration
+        run: uv run pytest tests/test_phase1_integration.py
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No insecure transport or checked-in private material
+        run: |
+          ! grep -R --line-number -E 'InsecureSkipVerify|grpc\.WithInsecure|BEGIN (RSA )?PRIVATE KEY' agent controlplane proto tests docs README.md || false
+          ! grep -R --line-number -E 'AKIA[0-9A-Z]{16}' . --exclude-dir=.git || false

@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package djangoops.agent.v1;
+
+option go_package = "github.com/zohaibsaeed93/django-ops/agent/gen/agentv1;agentv1";
+
+service AgentControl {
+  rpc Connect(stream AgentFrame) returns (stream ControlFrame);
+}
+
+message ProtocolVersion {
+  uint32 major = 1;
+  uint32 minor = 2;
+}
+
+message AgentHello {
+  string agent_id = 1;
+  ProtocolVersion protocol = 2;
+  repeated string capabilities = 3;
+  string auth_token = 4;
+}
+
+message Heartbeat {
+  int64 unix_millis = 1;
+}
+
+message DiagnosticsRequest {
+  string job_id = 1;
+  string release_root = 2;
+}
+
+message CancelJob {
+  string job_id = 1;
+}
+
+message ProgressEvent {
+  string job_id = 1;
+  uint64 sequence = 2;
+  string phase = 3;
+  string message = 4;
+}
+
+message DiagnosticCheck {
+  string name = 1;
+  string status = 2;
+  string detail = 3;
+}
+
+message DiagnosticsResult {
+  string job_id = 1;
+  uint64 sequence = 2;
+  string status = 3;
+  repeated DiagnosticCheck checks = 4;
+}
+
+message AgentFrame {
+  oneof payload {
+    AgentHello hello = 1;
+    Heartbeat heartbeat = 2;
+    ProgressEvent progress = 3;
+    DiagnosticsResult result = 4;
+  }
+}
+
+message ControlFrame {
+  oneof payload {
+    DiagnosticsRequest diagnostics = 1;
+    CancelJob cancel = 2;
+  }
+}
