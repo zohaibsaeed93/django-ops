@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>DjangoOps dashboard</title>
+  <style>
+    body{font-family:system-ui;max-width:1100px;margin:auto;padding:2rem}
+    section{border:1px solid #ddd;padding:1rem;margin:1rem 0}
+    .status{font-weight:700} pre{white-space:pre-wrap;overflow-wrap:anywhere}
+    button{margin:.25rem}
+  </style>
+</head>
+<body>
+<header>
+  <h1>DjangoOps operations</h1>
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Sign out</button></form>
+</header>
+{% for row in project_rows %}
+<section>
+  <h2>{{ row.project.name }}</h2><p>Project <code>{{ row.project.slug }}</code></p>
+  {% for item in row.agents %}
+  <article>
+    <h3>Agent {{ item.registration.agent_id }}</h3>
+    <p>Status: <strong>{% if item.state.connected %}connected{% else %}offline{% endif %}</strong></p>
+    {% if item.state.connected %}
+    <p>Heartbeat age: {{ item.state.heartbeat_age }}s · Protocol: v{{ item.state.protocol_major }}.{{ item.state.protocol_minor }}</p>
+    {% endif %}
+    <p>Capabilities: {{ item.state.capabilities|join:", " }}</p>
+    <form method="post" action="{% url 'start-diagnostic' row.project.id item.registration.id %}">
+      {% csrf_token %}<button>Run Django health diagnostic</button>
+    </form>
+  </article>
+  {% empty %}<p>No registered agents.</p>{% endfor %}
+  <h3>Recent diagnostics</h3>
+  <ul>
+  {% for op in row.operations %}
+    <li data-operation="{{ op.public_id }}">
+      <span class="status">{{ op.status }}</span> — {{ op.agent.agent_id }} / {{ op.diagnostic }}
+      {% if op.status == 'pending' or op.status == 'running' %}
+      <form method="post" action="{% url 'cancel-diagnostic' op.public_id %}" style="display:inline">
+        {% csrf_token %}<button>Cancel</button>
+      </form>
+      {% endif %}
+      <pre>{{ op.result_summary }}</pre>
+    </li>
+  {% empty %}<li>No diagnostics yet.</li>{% endfor %}
+  </ul>
+</section>
+{% empty %}<p>No authorized projects.</p>{% endfor %}
+<script>
+for (const el of document.querySelectorAll('[data-operation]')) {
+  let attempts = 0;
+  const terminal = new Set([
+    'succeeded','failed','cancelled','offline','overloaded','disconnected','timeout'
+  ]);
+  const tick = async () => {
+    if (attempts++ >= 120) return;
+    const response = await fetch('/operations/' + el.dataset.operation + '/updates', {
+      credentials: 'same-origin'
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    el.querySelector('.status').textContent = data.status;
+    if (!terminal.has(data.status)) setTimeout(tick, 2000);
+  };
+  if (!terminal.has(el.querySelector('.status').textContent.trim())) setTimeout(tick, 1000);
+}
+</script>
+</body>
+</html>

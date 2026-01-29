@@ -11,20 +11,26 @@ requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
 authors = [{ name = "DjangoOps contributors" }]
 dependencies = [
+  "Django>=5.2,<5.3",
+  "graphql-core>=3.2,<4",
   "grpcio>=1.71,<2",
   "protobuf>=5.29,<6",
   "PyYAML>=6.0,<7",
+  "uvicorn>=0.34,<0.35",
 ]
 
 [project.scripts]
 djangoops = "djangoops.cli:main"
+djangoops-controlplane = "controlplane.webserver:main"
 
 [dependency-groups]
 dev = [
+  "django-stubs[compatible-mypy]>=5.2,<5.3",
   "grpcio-tools==1.71.0",
   "mypy>=1.15,<2",
   "pre-commit>=4.2,<5",
   "pytest>=8.3,<9",
+  "pytest-django>=4.11,<5",
   "ruff>=0.11,<0.12",
   "types-grpcio>=1.0,<2",
   "types-PyYAML>=6.0,<7",
@@ -40,11 +46,12 @@ where = ["cli"]
 addopts = "-ra -q"
 pythonpath = ["."]
 testpaths = ["tests"]
+DJANGO_SETTINGS_MODULE = "controlplane.settings"
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-extend-exclude = ["controlplane/generated"]
+extend-exclude = ["controlplane/generated", "controlplane/migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -53,4 +60,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.12"
 strict = true
 warn_unused_configs = true
-exclude = ["controlplane/generated"]
+plugins = ["mypy_django_plugin.main"]
+exclude = ["controlplane/generated", "controlplane/migrations"]
+
+[tool.django-stubs]
+django_settings_module = "controlplane.settings"

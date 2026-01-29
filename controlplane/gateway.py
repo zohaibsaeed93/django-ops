@@ -36,6 +36,9 @@ class JobState:
 @dataclass
 class AgentSession:
     agent_id: str
+    capabilities: tuple[str, ...]
+    protocol_major: int
+    protocol_minor: int
     outgoing: asyncio.Queue[Any | None] = field(
         default_factory=lambda: asyncio.Queue(maxsize=_MAX_OUTGOING_FRAMES)
     )
@@ -87,7 +90,12 @@ class AgentGateway(agent_pb2_grpc.AgentControlServicer):  # type: ignore[misc]
             await context.abort(grpc.StatusCode.UNAUTHENTICATED, "agent authentication failed")
             return
 
-        session = AgentSession(hello.agent_id)
+        session = AgentSession(
+            hello.agent_id,
+            tuple(hello.capabilities),
+            hello.protocol.major,
+            hello.protocol.minor,
+        )
         async with self._lock:
             if hello.agent_id in self._sessions:
                 await context.abort(
@@ -195,6 +203,18 @@ class AgentGateway(agent_pb2_grpc.AgentControlServicer):  # type: ignore[misc]
         if session is None:
             raise LookupError("agent is not connected")
         return max(0.0, time.monotonic() - session.last_heartbeat)
+
+    def capabilities(self, agent_id: str) -> tuple[str, ...]:
+        session = self._sessions.get(agent_id)
+        if session is None:
+            raise LookupError("agent is not connected")
+        return session.capabilities
+
+    def protocol_version(self, agent_id: str) -> tuple[int, int]:
+        session = self._sessions.get(agent_id)
+        if session is None:
+            raise LookupError("agent is not connected")
+        return session.protocol_major, session.protocol_minor
 
     async def diagnostics(
         self, agent_id: str, job_id: str, release_root: str

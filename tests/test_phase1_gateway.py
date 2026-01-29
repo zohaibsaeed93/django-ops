@@ -48,7 +48,7 @@ def test_gateway_bounds_inflight_work_and_completed_retention() -> None:
 
 async def _exercise_gateway_limits() -> None:
     gateway = AgentGateway({"agent-1": "synthetic"}, max_completed_jobs=2, max_inflight_per_agent=1)
-    session = AgentSession("agent-1")
+    session = AgentSession("agent-1", ("django_diagnostics_v1",), 1, 0)
     gateway._sessions["agent-1"] = session
     assert session.outgoing.maxsize > 0
 

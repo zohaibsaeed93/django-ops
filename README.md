@@ -4,9 +4,9 @@ DjangoOps is an opinionated operations platform for production Django applicatio
 
 ## Current phase
 
-**Phase 1 is active.** Phase 0 direct-SSH deploy/rollback, health, Compose generation, and backup/restore remain supported as the proven fallback path. Phase 1 adds a persistent Go `djangoops-agent` that initiates an outbound-only authenticated gRPC/TLS control channel for typed Django diagnostics. Dashboard/GraphQL, Kubernetes/Helm, generic container administration, arbitrary shell execution, and observability are not part of this phase.
+**Phase 2 is active.** Phase 0 direct-SSH deploy/rollback, health, Compose generation, and backup/restore remain the proven fallback path. Phase 1's outbound-only authenticated Go agent remains the only persistent execution channel. Phase 2 adds an authenticated Django operations dashboard and a project-scoped, typed GraphQL API over that existing agent-backed diagnostic path. It does not add arbitrary shell execution, generic container administration, Kubernetes/Helm, or observability.
 
-See [`docs/phase1-agent-channel.md`](docs/phase1-agent-channel.md) for the Phase 1 trust model, provisioning, diagnostics contract, cancellation, reconnect behavior, and rollback guidance. Phase 0 dogfood evidence remains in [`docs/phase0-dogfood.md`](docs/phase0-dogfood.md); the reusable Phase 0 operator workflow is preserved below.
+See [`docs/phase2-dashboard-graphql.md`](docs/phase2-dashboard-graphql.md) for the dashboard/API trust boundary, GraphQL contract, resource limits, persistence, and rollback guidance. [`docs/phase1-agent-channel.md`](docs/phase1-agent-channel.md) remains authoritative for the agent transport. Phase 0 dogfood evidence remains in [`docs/phase0-dogfood.md`](docs/phase0-dogfood.md); the reusable Phase 0 operator workflow is preserved below.
 
 ## Initialize a project
 
@@ -177,9 +177,25 @@ The control-plane process similarly reads its TLS key/certificate and agent-toke
 
 Rollback of the Phase 1 task removes the persistent agent channel only. The direct-SSH Phase 0 deploy, recovery, health, backup scheduling, backup execution/listing, and explicit restore workflow above remains the supported fallback and does not require the agent.
 
+## Phase 2 dashboard and GraphQL API
+
+Bootstrap the Django control-plane database and an operator account:
+
+```bash
+export DJANGOOPS_WEB_SECRET_KEY='<provisioned outside repository>'
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+```
+
+Run `uv run djangoops-controlplane` with the existing Phase 1 gateway TLS/token environment. The web listener defaults to `127.0.0.1:8000`; terminate public TLS in front of it. Set `DJANGOOPS_WEB_DEBUG=0` in production, provide a strong `DJANGOOPS_WEB_SECRET_KEY`, and configure `DJANGOOPS_WEB_ALLOWED_HOSTS`. Production startup fails closed when the web secret is missing, session/CSRF cookies are secure, and GraphQL introspection is disabled.
+
+The dashboard at `/` and `POST /graphql/v1` use Django session authentication and server-side project membership on every project/agent/operation access. GraphQL exposes only the existing `DJANGO_HEALTH` diagnostic through the Phase 1 gateway, not arbitrary commands. Active agent state comes from the live gateway session: connectivity, heartbeat age, negotiated protocol version, and capabilities. Operations persist bounded status/result summaries with explicit offline, timeout, cancellation, disconnect, overload/backpressure, and failure states. GraphQL depth/field-count limits and bounded dashboard update polling prevent unbounded client work.
+
+See [`docs/phase2-dashboard-graphql.md`](docs/phase2-dashboard-graphql.md) for schema/API details, migration rollback, and security constraints.
+
 ## Development
 
-Python development is pinned to Python 3.12 and uses `uv`. Phase 1 additionally uses Go 1.23 and reproducible protobuf generation.
+Python development is pinned to Python 3.12 and uses `uv`. Phase 1+ additionally uses Go 1.23 and reproducible protobuf generation.
 
 ```bash
 uv sync --group dev
@@ -187,16 +203,17 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy cli/djangoops controlplane tests
 uv run pytest
+uv run python manage.py makemigrations --check --dry-run
 cd agent && go test ./...
 scripts/generate_proto.sh
 git diff --exit-code -- controlplane/generated agent/gen
 ```
 
-GitHub Actions runs Python quality/regression checks, Go format/vet/tests, protobuf generation drift/contract checks, security assertions, and cross-language TLS integration tests.
+GitHub Actions runs Python quality/regression checks, Django migration/system/behavior checks, Go format/vet/tests, protobuf generation drift/contract checks, security assertions, and cross-language TLS integration tests.
 
 ## Repository layout
 
-- `controlplane/` — Django + DRF control plane plus the Phase 1 gRPC transport/application boundary; no dashboard or GraphQL
+- `controlplane/` — Django control plane, authenticated Phase 2 dashboard/GraphQL API, and the Phase 1 gRPC transport/application boundary
 - `cli/` — Python CLI and direct-SSH Phase 0 fallback
 - `agent/` — outbound-only Go diagnostic executor introduced in Phase 1
 - `proto/djangoops/agent/v1/` — versioned shared agent protocol contract
