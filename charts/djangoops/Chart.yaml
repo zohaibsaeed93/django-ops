@@ -1,0 +1,6 @@
+apiVersion: v2
+name: djangoops
+version: 0.1.0
+appVersion: "0.1.0"
+type: application
+description: DjangoOps-owned Django deployment topology for Kubernetes/K3s

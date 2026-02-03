@@ -78,3 +78,13 @@ async def _exercise_gateway_limits() -> None:
     gateway._remember_completed("job-3")
     assert gateway._completed_jobs == {"job-2", "job-3"}
     assert len(gateway._completed_order) == 2
+
+    diagnostics_reuse = gateway.diagnostics("agent-1", "job-2", ".")
+    with pytest.raises(ValueError, match="already been used"):
+        await anext(diagnostics_reuse)
+
+    _, replay_state = await gateway._open_job(
+        "agent-1", "job-2", "kubernetes", allow_completed_reuse=True
+    )
+    assert replay_state.kind == "kubernetes"
+    gateway._jobs.pop("job-2")

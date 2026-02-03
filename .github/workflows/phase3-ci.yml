@@ -1,0 +1,119 @@
+name: Phase 3 CI
+
+on:
+  push:
+    branches: [main, "auto/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  chart-and-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev
+      - name: Helm lint and deterministic render
+        run: |
+          helm lint charts/djangoops --set image.repository=registry.example/app --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          helm template djangoops charts/djangoops --namespace project-ci --set image.repository=registry.example/app --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > /tmp/render-a.yaml
+          helm template djangoops charts/djangoops --namespace project-ci --set image.repository=registry.example/app --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > /tmp/render-b.yaml
+          cmp /tmp/render-a.yaml /tmp/render-b.yaml
+          helm template djangoops charts/djangoops --namespace project-ci --set image.repository=registry.example/app --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --set celeryWorker.enabled=true --set celeryBeat.enabled=true | grep -q djangoops.io/component
+          ! grep -Eiq 'password:|token:|access[_-]?key:' /tmp/render-a.yaml
+      - name: Phase 3 Python lifecycle tests
+        run: uv run pytest tests/test_phase3_kubernetes.py tests/test_phase3_graphql.py
+
+  agent-kubernetes:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache-dependency-path: agent/go.sum
+      - run: test -z "$(gofmt -l internal/kubernetes internal/transport internal/config)"
+      - run: go test -race ./internal/kubernetes ./internal/transport ./internal/config
+
+  kind-control-path-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache-dependency-path: agent/go.sum
+      - uses: astral-sh/setup-uv@v5
+      - uses: azure/setup-helm@v4
+      - uses: helm/kind-action@v1.12.0
+        with:
+          install_only: true
+      - run: uv sync --group dev
+      - name: Create Kind with local registry
+        run: |
+          docker run -d --restart=always -p 127.0.0.1:5001:5000 --name kind-registry registry:2
+          cat >/tmp/kind.yaml <<'EOF'
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          containerdConfigPatches:
+          - |-
+            [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+              endpoint = ["http://kind-registry:5000"]
+          EOF
+          kind create cluster --name djangoops-phase3 --config /tmp/kind.yaml
+          docker network connect kind kind-registry
+      - name: Prepare namespace, least-privilege identity, and runtime secret
+        run: |
+          kubectl create namespace phase3-ci
+          kubectl create serviceaccount djangoops-release-agent -n phase3-ci
+          sed 's/REPLACE_PROJECT_NAMESPACE/phase3-ci/g' docs/examples/phase3-agent-rbac.yaml | kubectl apply -f -
+          kubectl create secret generic djangoops-runtime -n phase3-ci --from-literal=DJANGO_SECRET_KEY=phase3-ci-only
+          TOKEN=$(kubectl create token djangoops-release-agent -n phase3-ci --duration=1h)
+          SERVER=$(kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.server}')
+          CA_DATA=$(kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+          cat >/tmp/phase3-kubeconfig <<EOF
+          apiVersion: v1
+          kind: Config
+          clusters:
+          - name: kind
+            cluster:
+              server: ${SERVER}
+              certificate-authority-data: ${CA_DATA}
+          users:
+          - name: djangoops
+            user:
+              token: ${TOKEN}
+          contexts:
+          - name: djangoops
+            context:
+              cluster: kind
+              user: djangoops
+              namespace: phase3-ci
+          current-context: djangoops
+          EOF
+          chmod 600 /tmp/phase3-kubeconfig
+          echo PHASE3_KUBECONFIG=/tmp/phase3-kubeconfig >> "$GITHUB_ENV"
+      - name: Build and publish immutable Django fixture
+        run: |
+          docker build -t localhost:5001/phase3-django:ci tests/fixtures/phase3-django
+          docker push localhost:5001/phase3-django:ci
+          IMAGE=$(docker inspect --format='{{index .RepoDigests 0}}' localhost:5001/phase3-django:ci)
+          test -n "$IMAGE"
+          echo PHASE3_IMAGE_DIGEST="$IMAGE" >> "$GITHUB_ENV"
+      - name: Exercise outbound agent control path into Kind
+        run: PYTHONPATH=. uv run python tests/phase3_kind_e2e.py
+      - if: always()
+        run: kind delete cluster --name djangoops-phase3 || true

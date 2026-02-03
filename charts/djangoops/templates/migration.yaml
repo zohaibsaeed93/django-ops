@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "djangoops.name" . }}-migrate-{{ .Release.Revision }}
+  labels:
+    {{- include "djangoops.labels" . | nindent 4 }}
+    djangoops.io/component: migration
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "djangoops.labels" . | nindent 8 }}
+        djangoops.io/component: migration
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: {{ include "djangoops.image" . | quote }}
+          command: {{ toJson .Values.migration.command }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.environmentSecretName }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}

@@ -20,7 +20,12 @@ def _user(request: HttpRequest) -> User:
 def dashboard(request: HttpRequest) -> HttpResponse:
     user = _user(request)
     service = OperationsService()
-    projects = Project.objects.filter(members=user).prefetch_related("agents", "operations__agent")
+    projects = Project.objects.filter(members=user).prefetch_related(
+        "agents",
+        "operations__agent",
+        "kubernetes_targets__agent",
+        "kubernetes_releases__target",
+    )
     rows: list[dict[str, Any]] = []
     for project in projects:
         rows.append(
@@ -31,6 +36,8 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                     for agent in project.agents.all()
                 ],
                 "operations": list(project.operations.all()[:20]),
+                "kubernetes_targets": list(project.kubernetes_targets.all()),
+                "kubernetes_releases": list(project.kubernetes_releases.all()[:20]),
             }
         )
     return render(request, "controlplane/dashboard.html", {"project_rows": rows})

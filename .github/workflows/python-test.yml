@@ -35,7 +35,9 @@ jobs:
       - name: Lint
         run: uv run ruff check .
       - name: Format check
-        run: uv run ruff format --check .
+        run: |
+          uv run ruff format --diff .
+          uv run ruff format --check .
       - name: Type check
         run: uv run mypy cli/djangoops controlplane tests
       - name: Test

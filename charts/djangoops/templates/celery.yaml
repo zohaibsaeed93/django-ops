@@ -1,0 +1,57 @@
+{{- if .Values.celeryWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "djangoops.name" . }}-worker
+  labels:
+    {{- include "djangoops.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.celeryWorker.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      djangoops.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "djangoops.labels" . | nindent 8 }}
+        djangoops.io/component: worker
+    spec:
+      containers:
+        - name: worker
+          image: {{ include "djangoops.image" . | quote }}
+          command: {{ toJson .Values.celeryWorker.command }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.environmentSecretName }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+{{- end }}
+{{- if .Values.celeryBeat.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "djangoops.name" . }}-beat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      djangoops.io/component: beat
+  template:
+    metadata:
+      labels:
+        {{- include "djangoops.labels" . | nindent 8 }}
+        djangoops.io/component: beat
+    spec:
+      containers:
+        - name: beat
+          image: {{ include "djangoops.image" . | quote }}
+          command: {{ toJson .Values.celeryBeat.command }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.environmentSecretName }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+{{- end }}

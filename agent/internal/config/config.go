@@ -23,6 +23,7 @@ type Config struct {
 	ServerName     string
 	ProjectRoot    string
 	ComposeFile    string
+	CredentialRoot string
 	ProtocolMajor  uint32
 	HeartbeatEvery time.Duration
 }
@@ -44,6 +45,7 @@ func Load() (Config, error) {
 		ServerName:     os.Getenv("DJANGOOPS_CONTROLPLANE_SERVER_NAME"),
 		ProjectRoot:    os.Getenv("DJANGOOPS_PROJECT_ROOT"),
 		ComposeFile:    validatedComposeFile,
+		CredentialRoot: os.Getenv("DJANGOOPS_KUBERNETES_CREDENTIAL_ROOT"),
 		ProtocolMajor:  1,
 		HeartbeatEvery: 5 * time.Second,
 	}
@@ -79,6 +81,17 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("project root must be an existing directory")
 	}
 	cfg.ProjectRoot = filepath.Clean(root)
+	if cfg.CredentialRoot != "" {
+		credentialRoot, resolveErr := filepath.Abs(cfg.CredentialRoot)
+		if resolveErr != nil {
+			return Config{}, fmt.Errorf("resolve credential root: %w", resolveErr)
+		}
+		credentialInfo, statErr := os.Stat(credentialRoot)
+		if statErr != nil || !credentialInfo.IsDir() {
+			return Config{}, fmt.Errorf("Kubernetes credential root must be an existing directory")
+		}
+		cfg.CredentialRoot = filepath.Clean(credentialRoot)
+	}
 	return cfg, nil
 }
 

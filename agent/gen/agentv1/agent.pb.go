@@ -477,6 +477,298 @@ func (x *DiagnosticsResult) GetChecks() []*DiagnosticCheck {
 	return nil
 }
 
+type KubernetesReleaseRequest struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	JobId                   string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	Namespace               string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	ReleaseName             string                 `protobuf:"bytes,3,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	ChartPath               string                 `protobuf:"bytes,4,opt,name=chart_path,json=chartPath,proto3" json:"chart_path,omitempty"`
+	Image                   string                 `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
+	ValuesJson              string                 `protobuf:"bytes,6,opt,name=values_json,json=valuesJson,proto3" json:"values_json,omitempty"`
+	CredentialRef           string                 `protobuf:"bytes,7,opt,name=credential_ref,json=credentialRef,proto3" json:"credential_ref,omitempty"`
+	MigrationTimeoutSeconds uint32                 `protobuf:"varint,8,opt,name=migration_timeout_seconds,json=migrationTimeoutSeconds,proto3" json:"migration_timeout_seconds,omitempty"`
+	RolloutTimeoutSeconds   uint32                 `protobuf:"varint,9,opt,name=rollout_timeout_seconds,json=rolloutTimeoutSeconds,proto3" json:"rollout_timeout_seconds,omitempty"`
+	RollbackPolicy          string                 `protobuf:"bytes,10,opt,name=rollback_policy,json=rollbackPolicy,proto3" json:"rollback_policy,omitempty"`
+	Mode                    string                 `protobuf:"bytes,11,opt,name=mode,proto3" json:"mode,omitempty"`
+	PreviousRevision        uint32                 `protobuf:"varint,12,opt,name=previous_revision,json=previousRevision,proto3" json:"previous_revision,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *KubernetesReleaseRequest) Reset() {
+	*x = KubernetesReleaseRequest{}
+	mi := &file_agent_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesReleaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesReleaseRequest) ProtoMessage() {}
+
+func (x *KubernetesReleaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesReleaseRequest.ProtoReflect.Descriptor instead.
+func (*KubernetesReleaseRequest) Descriptor() ([]byte, []int) {
+	return file_agent_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesReleaseRequest) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetReleaseName() string {
+	if x != nil {
+		return x.ReleaseName
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetChartPath() string {
+	if x != nil {
+		return x.ChartPath
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetValuesJson() string {
+	if x != nil {
+		return x.ValuesJson
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetCredentialRef() string {
+	if x != nil {
+		return x.CredentialRef
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetMigrationTimeoutSeconds() uint32 {
+	if x != nil {
+		return x.MigrationTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesReleaseRequest) GetRolloutTimeoutSeconds() uint32 {
+	if x != nil {
+		return x.RolloutTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesReleaseRequest) GetRollbackPolicy() string {
+	if x != nil {
+		return x.RollbackPolicy
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseRequest) GetPreviousRevision() uint32 {
+	if x != nil {
+		return x.PreviousRevision
+	}
+	return 0
+}
+
+type KubernetesProgressEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	Sequence      uint64                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	Phase         string                 `protobuf:"bytes,3,opt,name=phase,proto3" json:"phase,omitempty"`
+	Message       string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesProgressEvent) Reset() {
+	*x = KubernetesProgressEvent{}
+	mi := &file_agent_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesProgressEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesProgressEvent) ProtoMessage() {}
+
+func (x *KubernetesProgressEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesProgressEvent.ProtoReflect.Descriptor instead.
+func (*KubernetesProgressEvent) Descriptor() ([]byte, []int) {
+	return file_agent_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesProgressEvent) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *KubernetesProgressEvent) GetSequence() uint64 {
+	if x != nil {
+		return x.Sequence
+	}
+	return 0
+}
+
+func (x *KubernetesProgressEvent) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *KubernetesProgressEvent) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type KubernetesReleaseResult struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	JobId            string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	Sequence         uint64                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	Status           string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	HelmRevision     uint32                 `protobuf:"varint,4,opt,name=helm_revision,json=helmRevision,proto3" json:"helm_revision,omitempty"`
+	PreviousRevision uint32                 `protobuf:"varint,5,opt,name=previous_revision,json=previousRevision,proto3" json:"previous_revision,omitempty"`
+	RollbackStatus   string                 `protobuf:"bytes,6,opt,name=rollback_status,json=rollbackStatus,proto3" json:"rollback_status,omitempty"`
+	ErrorCode        string                 `protobuf:"bytes,7,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *KubernetesReleaseResult) Reset() {
+	*x = KubernetesReleaseResult{}
+	mi := &file_agent_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesReleaseResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesReleaseResult) ProtoMessage() {}
+
+func (x *KubernetesReleaseResult) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesReleaseResult.ProtoReflect.Descriptor instead.
+func (*KubernetesReleaseResult) Descriptor() ([]byte, []int) {
+	return file_agent_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *KubernetesReleaseResult) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseResult) GetSequence() uint64 {
+	if x != nil {
+		return x.Sequence
+	}
+	return 0
+}
+
+func (x *KubernetesReleaseResult) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseResult) GetHelmRevision() uint32 {
+	if x != nil {
+		return x.HelmRevision
+	}
+	return 0
+}
+
+func (x *KubernetesReleaseResult) GetPreviousRevision() uint32 {
+	if x != nil {
+		return x.PreviousRevision
+	}
+	return 0
+}
+
+func (x *KubernetesReleaseResult) GetRollbackStatus() string {
+	if x != nil {
+		return x.RollbackStatus
+	}
+	return ""
+}
+
+func (x *KubernetesReleaseResult) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
+}
+
 type AgentFrame struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Payload:
@@ -485,6 +777,8 @@ type AgentFrame struct {
 	//	*AgentFrame_Heartbeat
 	//	*AgentFrame_Progress
 	//	*AgentFrame_Result
+	//	*AgentFrame_KubernetesProgress
+	//	*AgentFrame_KubernetesResult
 	Payload       isAgentFrame_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -492,7 +786,7 @@ type AgentFrame struct {
 
 func (x *AgentFrame) Reset() {
 	*x = AgentFrame{}
-	mi := &file_agent_proto_msgTypes[8]
+	mi := &file_agent_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -504,7 +798,7 @@ func (x *AgentFrame) String() string {
 func (*AgentFrame) ProtoMessage() {}
 
 func (x *AgentFrame) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_proto_msgTypes[8]
+	mi := &file_agent_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -517,7 +811,7 @@ func (x *AgentFrame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentFrame.ProtoReflect.Descriptor instead.
 func (*AgentFrame) Descriptor() ([]byte, []int) {
-	return file_agent_proto_rawDescGZIP(), []int{8}
+	return file_agent_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AgentFrame) GetPayload() isAgentFrame_Payload {
@@ -563,6 +857,24 @@ func (x *AgentFrame) GetResult() *DiagnosticsResult {
 	return nil
 }
 
+func (x *AgentFrame) GetKubernetesProgress() *KubernetesProgressEvent {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentFrame_KubernetesProgress); ok {
+			return x.KubernetesProgress
+		}
+	}
+	return nil
+}
+
+func (x *AgentFrame) GetKubernetesResult() *KubernetesReleaseResult {
+	if x != nil {
+		if x, ok := x.Payload.(*AgentFrame_KubernetesResult); ok {
+			return x.KubernetesResult
+		}
+	}
+	return nil
+}
+
 type isAgentFrame_Payload interface {
 	isAgentFrame_Payload()
 }
@@ -583,6 +895,14 @@ type AgentFrame_Result struct {
 	Result *DiagnosticsResult `protobuf:"bytes,4,opt,name=result,proto3,oneof"`
 }
 
+type AgentFrame_KubernetesProgress struct {
+	KubernetesProgress *KubernetesProgressEvent `protobuf:"bytes,5,opt,name=kubernetes_progress,json=kubernetesProgress,proto3,oneof"`
+}
+
+type AgentFrame_KubernetesResult struct {
+	KubernetesResult *KubernetesReleaseResult `protobuf:"bytes,6,opt,name=kubernetes_result,json=kubernetesResult,proto3,oneof"`
+}
+
 func (*AgentFrame_Hello) isAgentFrame_Payload() {}
 
 func (*AgentFrame_Heartbeat) isAgentFrame_Payload() {}
@@ -591,12 +911,17 @@ func (*AgentFrame_Progress) isAgentFrame_Payload() {}
 
 func (*AgentFrame_Result) isAgentFrame_Payload() {}
 
+func (*AgentFrame_KubernetesProgress) isAgentFrame_Payload() {}
+
+func (*AgentFrame_KubernetesResult) isAgentFrame_Payload() {}
+
 type ControlFrame struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*ControlFrame_Diagnostics
 	//	*ControlFrame_Cancel
+	//	*ControlFrame_KubernetesRelease
 	Payload       isControlFrame_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -604,7 +929,7 @@ type ControlFrame struct {
 
 func (x *ControlFrame) Reset() {
 	*x = ControlFrame{}
-	mi := &file_agent_proto_msgTypes[9]
+	mi := &file_agent_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -616,7 +941,7 @@ func (x *ControlFrame) String() string {
 func (*ControlFrame) ProtoMessage() {}
 
 func (x *ControlFrame) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_proto_msgTypes[9]
+	mi := &file_agent_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -629,7 +954,7 @@ func (x *ControlFrame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ControlFrame.ProtoReflect.Descriptor instead.
 func (*ControlFrame) Descriptor() ([]byte, []int) {
-	return file_agent_proto_rawDescGZIP(), []int{9}
+	return file_agent_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ControlFrame) GetPayload() isControlFrame_Payload {
@@ -657,6 +982,15 @@ func (x *ControlFrame) GetCancel() *CancelJob {
 	return nil
 }
 
+func (x *ControlFrame) GetKubernetesRelease() *KubernetesReleaseRequest {
+	if x != nil {
+		if x, ok := x.Payload.(*ControlFrame_KubernetesRelease); ok {
+			return x.KubernetesRelease
+		}
+	}
+	return nil
+}
+
 type isControlFrame_Payload interface {
 	isControlFrame_Payload()
 }
@@ -669,9 +1003,15 @@ type ControlFrame_Cancel struct {
 	Cancel *CancelJob `protobuf:"bytes,2,opt,name=cancel,proto3,oneof"`
 }
 
+type ControlFrame_KubernetesRelease struct {
+	KubernetesRelease *KubernetesReleaseRequest `protobuf:"bytes,3,opt,name=kubernetes_release,json=kubernetesRelease,proto3,oneof"`
+}
+
 func (*ControlFrame_Diagnostics) isControlFrame_Payload() {}
 
 func (*ControlFrame_Cancel) isControlFrame_Payload() {}
+
+func (*ControlFrame_KubernetesRelease) isControlFrame_Payload() {}
 
 var File_agent_proto protoreflect.FileDescriptor
 
@@ -709,17 +1049,50 @@ const file_agent_proto_rawDesc = "" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12;\n" +
-	"\x06checks\x18\x04 \x03(\v2#.djangoops.agent.v1.DiagnosticCheckR\x06checks\"\x90\x02\n" +
+	"\x06checks\x18\x04 \x03(\v2#.djangoops.agent.v1.DiagnosticCheckR\x06checks\"\xcd\x03\n" +
+	"\x18KubernetesReleaseRequest\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1c\n" +
+	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x03 \x01(\tR\vreleaseName\x12\x1d\n" +
+	"\n" +
+	"chart_path\x18\x04 \x01(\tR\tchartPath\x12\x14\n" +
+	"\x05image\x18\x05 \x01(\tR\x05image\x12\x1f\n" +
+	"\vvalues_json\x18\x06 \x01(\tR\n" +
+	"valuesJson\x12%\n" +
+	"\x0ecredential_ref\x18\a \x01(\tR\rcredentialRef\x12:\n" +
+	"\x19migration_timeout_seconds\x18\b \x01(\rR\x17migrationTimeoutSeconds\x126\n" +
+	"\x17rollout_timeout_seconds\x18\t \x01(\rR\x15rolloutTimeoutSeconds\x12'\n" +
+	"\x0frollback_policy\x18\n" +
+	" \x01(\tR\x0erollbackPolicy\x12\x12\n" +
+	"\x04mode\x18\v \x01(\tR\x04mode\x12+\n" +
+	"\x11previous_revision\x18\f \x01(\rR\x10previousRevision\"|\n" +
+	"\x17KubernetesProgressEvent\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1a\n" +
+	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\x14\n" +
+	"\x05phase\x18\x03 \x01(\tR\x05phase\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\"\xfe\x01\n" +
+	"\x17KubernetesReleaseResult\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1a\n" +
+	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12#\n" +
+	"\rhelm_revision\x18\x04 \x01(\rR\fhelmRevision\x12+\n" +
+	"\x11previous_revision\x18\x05 \x01(\rR\x10previousRevision\x12'\n" +
+	"\x0frollback_status\x18\x06 \x01(\tR\x0erollbackStatus\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\a \x01(\tR\terrorCode\"\xcc\x03\n" +
 	"\n" +
 	"AgentFrame\x126\n" +
 	"\x05hello\x18\x01 \x01(\v2\x1e.djangoops.agent.v1.AgentHelloH\x00R\x05hello\x12=\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x1d.djangoops.agent.v1.HeartbeatH\x00R\theartbeat\x12?\n" +
 	"\bprogress\x18\x03 \x01(\v2!.djangoops.agent.v1.ProgressEventH\x00R\bprogress\x12?\n" +
-	"\x06result\x18\x04 \x01(\v2%.djangoops.agent.v1.DiagnosticsResultH\x00R\x06resultB\t\n" +
-	"\apayload\"\x9e\x01\n" +
+	"\x06result\x18\x04 \x01(\v2%.djangoops.agent.v1.DiagnosticsResultH\x00R\x06result\x12^\n" +
+	"\x13kubernetes_progress\x18\x05 \x01(\v2+.djangoops.agent.v1.KubernetesProgressEventH\x00R\x12kubernetesProgress\x12Z\n" +
+	"\x11kubernetes_result\x18\x06 \x01(\v2+.djangoops.agent.v1.KubernetesReleaseResultH\x00R\x10kubernetesResultB\t\n" +
+	"\apayload\"\xfd\x01\n" +
 	"\fControlFrame\x12J\n" +
 	"\vdiagnostics\x18\x01 \x01(\v2&.djangoops.agent.v1.DiagnosticsRequestH\x00R\vdiagnostics\x127\n" +
-	"\x06cancel\x18\x02 \x01(\v2\x1d.djangoops.agent.v1.CancelJobH\x00R\x06cancelB\t\n" +
+	"\x06cancel\x18\x02 \x01(\v2\x1d.djangoops.agent.v1.CancelJobH\x00R\x06cancel\x12]\n" +
+	"\x12kubernetes_release\x18\x03 \x01(\v2,.djangoops.agent.v1.KubernetesReleaseRequestH\x00R\x11kubernetesReleaseB\t\n" +
 	"\apayload2_\n" +
 	"\fAgentControl\x12O\n" +
 	"\aConnect\x12\x1e.djangoops.agent.v1.AgentFrame\x1a .djangoops.agent.v1.ControlFrame(\x010\x01B?Z=github.com/zohaibsaeed93/django-ops/agent/gen/agentv1;agentv1b\x06proto3"
@@ -736,35 +1109,41 @@ func file_agent_proto_rawDescGZIP() []byte {
 	return file_agent_proto_rawDescData
 }
 
-var file_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_agent_proto_goTypes = []any{
-	(*ProtocolVersion)(nil),    // 0: djangoops.agent.v1.ProtocolVersion
-	(*AgentHello)(nil),         // 1: djangoops.agent.v1.AgentHello
-	(*Heartbeat)(nil),          // 2: djangoops.agent.v1.Heartbeat
-	(*DiagnosticsRequest)(nil), // 3: djangoops.agent.v1.DiagnosticsRequest
-	(*CancelJob)(nil),          // 4: djangoops.agent.v1.CancelJob
-	(*ProgressEvent)(nil),      // 5: djangoops.agent.v1.ProgressEvent
-	(*DiagnosticCheck)(nil),    // 6: djangoops.agent.v1.DiagnosticCheck
-	(*DiagnosticsResult)(nil),  // 7: djangoops.agent.v1.DiagnosticsResult
-	(*AgentFrame)(nil),         // 8: djangoops.agent.v1.AgentFrame
-	(*ControlFrame)(nil),       // 9: djangoops.agent.v1.ControlFrame
+	(*ProtocolVersion)(nil),          // 0: djangoops.agent.v1.ProtocolVersion
+	(*AgentHello)(nil),               // 1: djangoops.agent.v1.AgentHello
+	(*Heartbeat)(nil),                // 2: djangoops.agent.v1.Heartbeat
+	(*DiagnosticsRequest)(nil),       // 3: djangoops.agent.v1.DiagnosticsRequest
+	(*CancelJob)(nil),                // 4: djangoops.agent.v1.CancelJob
+	(*ProgressEvent)(nil),            // 5: djangoops.agent.v1.ProgressEvent
+	(*DiagnosticCheck)(nil),          // 6: djangoops.agent.v1.DiagnosticCheck
+	(*DiagnosticsResult)(nil),        // 7: djangoops.agent.v1.DiagnosticsResult
+	(*KubernetesReleaseRequest)(nil), // 8: djangoops.agent.v1.KubernetesReleaseRequest
+	(*KubernetesProgressEvent)(nil),  // 9: djangoops.agent.v1.KubernetesProgressEvent
+	(*KubernetesReleaseResult)(nil),  // 10: djangoops.agent.v1.KubernetesReleaseResult
+	(*AgentFrame)(nil),               // 11: djangoops.agent.v1.AgentFrame
+	(*ControlFrame)(nil),             // 12: djangoops.agent.v1.ControlFrame
 }
 var file_agent_proto_depIdxs = []int32{
-	0, // 0: djangoops.agent.v1.AgentHello.protocol:type_name -> djangoops.agent.v1.ProtocolVersion
-	6, // 1: djangoops.agent.v1.DiagnosticsResult.checks:type_name -> djangoops.agent.v1.DiagnosticCheck
-	1, // 2: djangoops.agent.v1.AgentFrame.hello:type_name -> djangoops.agent.v1.AgentHello
-	2, // 3: djangoops.agent.v1.AgentFrame.heartbeat:type_name -> djangoops.agent.v1.Heartbeat
-	5, // 4: djangoops.agent.v1.AgentFrame.progress:type_name -> djangoops.agent.v1.ProgressEvent
-	7, // 5: djangoops.agent.v1.AgentFrame.result:type_name -> djangoops.agent.v1.DiagnosticsResult
-	3, // 6: djangoops.agent.v1.ControlFrame.diagnostics:type_name -> djangoops.agent.v1.DiagnosticsRequest
-	4, // 7: djangoops.agent.v1.ControlFrame.cancel:type_name -> djangoops.agent.v1.CancelJob
-	8, // 8: djangoops.agent.v1.AgentControl.Connect:input_type -> djangoops.agent.v1.AgentFrame
-	9, // 9: djangoops.agent.v1.AgentControl.Connect:output_type -> djangoops.agent.v1.ControlFrame
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	0,  // 0: djangoops.agent.v1.AgentHello.protocol:type_name -> djangoops.agent.v1.ProtocolVersion
+	6,  // 1: djangoops.agent.v1.DiagnosticsResult.checks:type_name -> djangoops.agent.v1.DiagnosticCheck
+	1,  // 2: djangoops.agent.v1.AgentFrame.hello:type_name -> djangoops.agent.v1.AgentHello
+	2,  // 3: djangoops.agent.v1.AgentFrame.heartbeat:type_name -> djangoops.agent.v1.Heartbeat
+	5,  // 4: djangoops.agent.v1.AgentFrame.progress:type_name -> djangoops.agent.v1.ProgressEvent
+	7,  // 5: djangoops.agent.v1.AgentFrame.result:type_name -> djangoops.agent.v1.DiagnosticsResult
+	9,  // 6: djangoops.agent.v1.AgentFrame.kubernetes_progress:type_name -> djangoops.agent.v1.KubernetesProgressEvent
+	10, // 7: djangoops.agent.v1.AgentFrame.kubernetes_result:type_name -> djangoops.agent.v1.KubernetesReleaseResult
+	3,  // 8: djangoops.agent.v1.ControlFrame.diagnostics:type_name -> djangoops.agent.v1.DiagnosticsRequest
+	4,  // 9: djangoops.agent.v1.ControlFrame.cancel:type_name -> djangoops.agent.v1.CancelJob
+	8,  // 10: djangoops.agent.v1.ControlFrame.kubernetes_release:type_name -> djangoops.agent.v1.KubernetesReleaseRequest
+	11, // 11: djangoops.agent.v1.AgentControl.Connect:input_type -> djangoops.agent.v1.AgentFrame
+	12, // 12: djangoops.agent.v1.AgentControl.Connect:output_type -> djangoops.agent.v1.ControlFrame
+	12, // [12:13] is the sub-list for method output_type
+	11, // [11:12] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_agent_proto_init() }
@@ -772,15 +1151,18 @@ func file_agent_proto_init() {
 	if File_agent_proto != nil {
 		return
 	}
-	file_agent_proto_msgTypes[8].OneofWrappers = []any{
+	file_agent_proto_msgTypes[11].OneofWrappers = []any{
 		(*AgentFrame_Hello)(nil),
 		(*AgentFrame_Heartbeat)(nil),
 		(*AgentFrame_Progress)(nil),
 		(*AgentFrame_Result)(nil),
+		(*AgentFrame_KubernetesProgress)(nil),
+		(*AgentFrame_KubernetesResult)(nil),
 	}
-	file_agent_proto_msgTypes[9].OneofWrappers = []any{
+	file_agent_proto_msgTypes[12].OneofWrappers = []any{
 		(*ControlFrame_Diagnostics)(nil),
 		(*ControlFrame_Cancel)(nil),
+		(*ControlFrame_KubernetesRelease)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -788,7 +1170,7 @@ func file_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agent_proto_rawDesc), len(file_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

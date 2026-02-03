@@ -1,0 +1,32 @@
+image:
+  repository: ""
+  digest: ""
+webReplicas: 2
+environmentSecretName: djangoops-runtime
+migrationCompatibility: unknown
+web:
+  command: ["gunicorn"]
+  args: ["config.wsgi:application", "--bind", "0.0.0.0:8000"]
+celeryWorker:
+  enabled: false
+  replicas: 1
+  command: ["celery", "-A", "config", "worker", "-l", "info"]
+celeryBeat:
+  enabled: false
+  command: ["celery", "-A", "config", "beat", "-l", "info"]
+migration:
+  command: ["python", "manage.py", "migrate", "--noinput"]
+  activeDeadlineSeconds: 300
+health:
+  path: /health/
+  port: 8000
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: "1", memory: 512Mi}
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tlsSecretName: ""
+  annotations: {}
+labels: {}

@@ -8,49 +8,38 @@ service AgentControl {
   rpc Connect(stream AgentFrame) returns (stream ControlFrame);
 }
 
-message ProtocolVersion {
-  uint32 major = 1;
-  uint32 minor = 2;
-}
+message ProtocolVersion { uint32 major = 1; uint32 minor = 2; }
+message AgentHello { string agent_id = 1; ProtocolVersion protocol = 2; repeated string capabilities = 3; string auth_token = 4; }
+message Heartbeat { int64 unix_millis = 1; }
+message DiagnosticsRequest { string job_id = 1; string release_root = 2; }
+message CancelJob { string job_id = 1; }
+message ProgressEvent { string job_id = 1; uint64 sequence = 2; string phase = 3; string message = 4; }
+message DiagnosticCheck { string name = 1; string status = 2; string detail = 3; }
+message DiagnosticsResult { string job_id = 1; uint64 sequence = 2; string status = 3; repeated DiagnosticCheck checks = 4; }
 
-message AgentHello {
-  string agent_id = 1;
-  ProtocolVersion protocol = 2;
-  repeated string capabilities = 3;
-  string auth_token = 4;
-}
-
-message Heartbeat {
-  int64 unix_millis = 1;
-}
-
-message DiagnosticsRequest {
+message KubernetesReleaseRequest {
   string job_id = 1;
-  string release_root = 2;
+  string namespace = 2;
+  string release_name = 3;
+  string chart_path = 4;
+  string image = 5;
+  string values_json = 6;
+  string credential_ref = 7;
+  uint32 migration_timeout_seconds = 8;
+  uint32 rollout_timeout_seconds = 9;
+  string rollback_policy = 10;
+  string mode = 11;
+  uint32 previous_revision = 12;
 }
-
-message CancelJob {
-  string job_id = 1;
-}
-
-message ProgressEvent {
-  string job_id = 1;
-  uint64 sequence = 2;
-  string phase = 3;
-  string message = 4;
-}
-
-message DiagnosticCheck {
-  string name = 1;
-  string status = 2;
-  string detail = 3;
-}
-
-message DiagnosticsResult {
+message KubernetesProgressEvent { string job_id = 1; uint64 sequence = 2; string phase = 3; string message = 4; }
+message KubernetesReleaseResult {
   string job_id = 1;
   uint64 sequence = 2;
   string status = 3;
-  repeated DiagnosticCheck checks = 4;
+  uint32 helm_revision = 4;
+  uint32 previous_revision = 5;
+  string rollback_status = 6;
+  string error_code = 7;
 }
 
 message AgentFrame {
@@ -59,12 +48,14 @@ message AgentFrame {
     Heartbeat heartbeat = 2;
     ProgressEvent progress = 3;
     DiagnosticsResult result = 4;
+    KubernetesProgressEvent kubernetes_progress = 5;
+    KubernetesReleaseResult kubernetes_result = 6;
   }
 }
-
 message ControlFrame {
   oneof payload {
     DiagnosticsRequest diagnostics = 1;
     CancelJob cancel = 2;
+    KubernetesReleaseRequest kubernetes_release = 3;
   }
 }

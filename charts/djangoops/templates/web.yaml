@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "djangoops.name" . }}-web
+  labels:
+    {{- include "djangoops.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.webReplicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      djangoops.io/component: web
+  template:
+    metadata:
+      labels:
+        {{- include "djangoops.labels" . | nindent 8 }}
+        djangoops.io/component: web
+    spec:
+      containers:
+        - name: web
+          image: {{ include "djangoops.image" . | quote }}
+          imagePullPolicy: IfNotPresent
+          command: {{ toJson .Values.web.command }}
+          args: {{ toJson .Values.web.args }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.environmentSecretName }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.health.port }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.health.path }}
+              port: http
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.health.path }}
+              port: http
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "djangoops.name" . }}-web
+  labels:
+    {{- include "djangoops.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    djangoops.io/component: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
