@@ -1,7 +1,7 @@
 # Control plane
 
-Phase 1 introduces only the secure agent transport/application boundary here. `AgentGateway` accepts an agent-initiated bidirectional gRPC stream over TLS, authenticates an agent with separately provisioned runtime credentials, rejects conflicting identities/protocols, tracks liveness, dispatches one typed diagnostics job, receives ordered events, and sends idempotent cancellation.
+The control plane owns authenticated project-scoped operations while preserving the existing outbound-only agent trust boundary. `AgentGateway` accepts an agent-initiated bidirectional gRPC stream over TLS, authenticates separately provisioned runtime credentials, tracks liveness, and dispatches only typed diagnostics/Kubernetes operations. TLS material and `DJANGOOPS_AGENT_TOKENS_JSON` remain runtime-only secrets.
 
-The gateway does not expose a dashboard, GraphQL API, remote shell, package manager, file browser, Kubernetes/Helm control, or generic container administration. TLS certificate/key and `DJANGOOPS_AGENT_TOKENS_JSON` are runtime secrets/configuration and must not be committed.
+Phase 4 adds best-effort observability without becoming a telemetry backend. Authenticated staff may scrape `/internal/metrics`; project members see only their own observability summary in the dashboard/typed GraphQL API. Optional `DJANGOOPS_OTLP_ENDPOINT` enables a bounded, non-retrying OTLP exporter. Metric labels are allowlisted and low-cardinality, recent events are bounded in process, and secrets/raw logs/environment dumps are never exported by these hooks.
 
-A lost stream marks the session disconnected and terminates server-side job observation; the agent independently cancels in-flight local work before reconnecting. Completed job IDs are never replayed automatically.
+Telemetry failure does not participate in operation admission or terminal-state decisions. Unset the OTLP endpoint to disable export with no migration. See `docs/phase4-observability.md`.

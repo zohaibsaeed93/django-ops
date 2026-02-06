@@ -24,6 +24,7 @@ type Config struct {
 	ProjectRoot    string
 	ComposeFile    string
 	CredentialRoot string
+	OTLPEndpoint   string
 	ProtocolMajor  uint32
 	HeartbeatEvery time.Duration
 }
@@ -46,6 +47,7 @@ func Load() (Config, error) {
 		ProjectRoot:    os.Getenv("DJANGOOPS_PROJECT_ROOT"),
 		ComposeFile:    validatedComposeFile,
 		CredentialRoot: os.Getenv("DJANGOOPS_KUBERNETES_CREDENTIAL_ROOT"),
+		OTLPEndpoint:   os.Getenv("DJANGOOPS_AGENT_OTLP_ENDPOINT"),
 		ProtocolMajor:  1,
 		HeartbeatEvery: 5 * time.Second,
 	}

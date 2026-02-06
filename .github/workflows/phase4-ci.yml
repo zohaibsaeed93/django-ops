@@ -1,0 +1,69 @@
+name: Phase 4 CI
+
+on:
+  push:
+    branches:
+      - main
+      - "auto/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  observability-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --group dev
+      - name: Phase 4 behavior and isolation tests
+        run: uv run pytest tests/test_phase4_observability.py tests/test_phase4_graphql.py
+
+  observability-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - name: Go format
+        run: test -z "$(gofmt -l agent)"
+      - name: Agent observability tests
+        working-directory: agent
+        run: go test ./internal/telemetry/... ./internal/config/... ./internal/transport/... ./internal/diagnostics/... ./internal/kubernetes/...
+      - name: No inbound observability listener
+        run: |
+          ! grep -R --line-number -E 'ListenAndServe|net\.Listen|http\.Serve\(' agent/internal/telemetry agent/cmd/djangoops-agent
+
+  workload-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+      - name: Default render is observability-off
+        run: |
+          helm template phase4 charts/djangoops \
+            --set image.repository=example.invalid/app \
+            --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > /tmp/default.yaml
+          ! grep -q OTEL_EXPORTER_OTLP_ENDPOINT /tmp/default.yaml
+      - name: Opt-in render carries only non-secret OTLP metadata
+        run: |
+          helm template phase4 charts/djangoops \
+            --set image.repository=example.invalid/app \
+            --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+            --set observability.enabled=true \
+            --set observability.otlpEndpoint=https://collector.example.test:4318 \
+            --set observability.serviceNamespace=djangoops \
+            --set observability.correlationId=phase4-e2e > /tmp/otel.yaml
+          grep -q OTEL_EXPORTER_OTLP_ENDPOINT /tmp/otel.yaml
+          grep -q DJANGOOPS_CORRELATION_ID /tmp/otel.yaml
+          ! grep -Eqi 'authorization|collector[_-]?token|password' /tmp/otel.yaml

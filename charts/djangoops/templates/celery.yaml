@@ -24,6 +24,19 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.environmentSecretName }}
+          {{- if .Values.observability.enabled }}
+          env:
+            - name: OTEL_SDK_DISABLED
+              value: "false"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.otlpEndpoint | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ printf "%s-worker" (include "djangoops.name" .) | quote }}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: {{ printf "service.namespace=%s,djangoops.component=worker" .Values.observability.serviceNamespace | quote }}
+            - name: DJANGOOPS_CORRELATION_ID
+              value: {{ .Values.observability.correlationId | quote }}
+          {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
 {{- end }}
@@ -52,6 +65,19 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.environmentSecretName }}
+          {{- if .Values.observability.enabled }}
+          env:
+            - name: OTEL_SDK_DISABLED
+              value: "false"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.otlpEndpoint | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ printf "%s-beat" (include "djangoops.name" .) | quote }}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: {{ printf "service.namespace=%s,djangoops.component=beat" .Values.observability.serviceNamespace | quote }}
+            - name: DJANGOOPS_CORRELATION_ID
+              value: {{ .Values.observability.correlationId | quote }}
+          {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
 {{- end }}

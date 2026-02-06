@@ -29,4 +29,9 @@ ingress:
   host: ""
   tlsSecretName: ""
   annotations: {}
+observability:
+  enabled: false
+  otlpEndpoint: ""
+  serviceNamespace: djangoops
+  correlationId: ""
 labels: {}

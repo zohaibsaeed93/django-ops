@@ -11,6 +11,7 @@ from graphql import ExecutionResult, GraphQLError, graphql_sync, parse
 from graphql.language.ast import FragmentDefinitionNode, FragmentSpreadNode
 
 from controlplane.graphql.schema import schema
+from controlplane.telemetry import telemetry
 
 
 def _resource_error(query: str) -> str | None:
@@ -58,25 +59,39 @@ def _resource_error(query: str) -> str | None:
 @login_required
 @require_POST
 def graphql_view(request: HttpRequest) -> JsonResponse:
+    correlation, started = telemetry.start(component="controlplane", kind="graphql")
+    outcome = "failed"
     try:
-        payload = json.loads(request.body or b"{}")
-        query = payload.get("query", "")
-        if not isinstance(query, str) or not query.strip():
-            return JsonResponse({"errors": [{"message": "query is required"}]}, status=400)
-        resource_error = _resource_error(query)
-        if resource_error:
-            return JsonResponse({"errors": [{"message": resource_error}]}, status=400)
-        result: ExecutionResult = graphql_sync(
-            schema,
-            query,
-            context_value=request,
-            variable_values=payload.get("variables"),
+        try:
+            payload = json.loads(request.body or b"{}")
+            query = payload.get("query", "")
+            if not isinstance(query, str) or not query.strip():
+                return JsonResponse({"errors": [{"message": "query is required"}]}, status=400)
+            resource_error = _resource_error(query)
+            if resource_error:
+                return JsonResponse({"errors": [{"message": resource_error}]}, status=400)
+            result: ExecutionResult = graphql_sync(
+                schema,
+                query,
+                context_value=request,
+                variable_values=payload.get("variables"),
+            )
+            body: dict[str, Any] = {}
+            if result.data is not None:
+                body["data"] = result.data
+            if result.errors:
+                body["errors"] = [
+                    {"message": "request could not be completed"} for _ in result.errors
+                ]
+            outcome = "succeeded" if not result.errors else "failed"
+            return JsonResponse(body, status=200 if not result.errors else 400)
+        except (GraphQLError, json.JSONDecodeError, TypeError, ValueError):
+            return JsonResponse({"errors": [{"message": "invalid GraphQL request"}]}, status=400)
+    finally:
+        telemetry.finish(
+            component="controlplane",
+            kind="graphql",
+            outcome=outcome,
+            correlation=correlation,
+            started=started,
         )
-        body: dict[str, Any] = {}
-        if result.data is not None:
-            body["data"] = result.data
-        if result.errors:
-            body["errors"] = [{"message": "request could not be completed"} for _ in result.errors]
-        return JsonResponse(body, status=200 if not result.errors else 400)
-    except (GraphQLError, json.JSONDecodeError, TypeError, ValueError):
-        return JsonResponse({"errors": [{"message": "invalid GraphQL request"}]}, status=400)

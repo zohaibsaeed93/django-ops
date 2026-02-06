@@ -12,6 +12,7 @@ urlpatterns = [
     ),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("graphql/v1", graphql_view, name="graphql-v1"),
+    path("internal/metrics", views.metrics, name="metrics"),
     path(
         "operations/<str:operation_id>/updates",
         views.operation_update,

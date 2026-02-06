@@ -9,7 +9,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from controlplane.models import AgentRegistration, DiagnosticOperation, Project
+from controlplane.observability import prometheus_extra, summary_for_project
 from controlplane.services import OperationsService
+from controlplane.telemetry import telemetry
 
 
 def _user(request: HttpRequest) -> User:
@@ -38,9 +40,22 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                 "operations": list(project.operations.all()[:20]),
                 "kubernetes_targets": list(project.kubernetes_targets.all()),
                 "kubernetes_releases": list(project.kubernetes_releases.all()[:20]),
+                "observability": summary_for_project(user, project.pk),
             }
         )
     return render(request, "controlplane/dashboard.html", {"project_rows": rows})
+
+
+@login_required
+@require_GET
+def metrics(request: HttpRequest) -> HttpResponse:
+    user = _user(request)
+    if not user.is_staff:
+        return HttpResponse(status=403)
+    return HttpResponse(
+        telemetry.prometheus(prometheus_extra()),
+        content_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @login_required

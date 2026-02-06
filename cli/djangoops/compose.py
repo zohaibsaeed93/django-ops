@@ -62,7 +62,7 @@ def render_compose(config: DjangoOpsConfig) -> str:
             "0.0.0.0:8000",
         ],
         "env_file": list(_APP_ENV_FILE),
-        "environment": _storage_environment(config),
+        "environment": _application_environment(config, "web"),
         "restart": _RESTART_POLICY,
         "expose": ["8000"],
         "labels": [
@@ -115,9 +115,9 @@ def render_compose(config: DjangoOpsConfig) -> str:
         volumes["redis_data"] = {}
 
     if config.services.celery:
-        services["celery"] = _celery_service(config, ["worker", "--loglevel=INFO"])
+        services["celery"] = _celery_service(config, ["worker", "--loglevel=INFO"], "worker")
     if config.services.celery_beat:
-        services["celery_beat"] = _celery_service(config, ["beat", "--loglevel=INFO"])
+        services["celery_beat"] = _celery_service(config, ["beat", "--loglevel=INFO"], "beat")
 
     document = {
         "name": config.project.name,
@@ -145,6 +145,23 @@ def _storage_environment(config: DjangoOpsConfig) -> dict[str, str]:
     return environment
 
 
+def _application_environment(config: DjangoOpsConfig, component: str) -> dict[str, str]:
+    environment = _storage_environment(config)
+    environment.update(
+        {
+            "OTEL_SDK_DISABLED": "${OTEL_SDK_DISABLED:-true}",
+            "OTEL_EXPORTER_OTLP_ENDPOINT": "${OTEL_EXPORTER_OTLP_ENDPOINT:-}",
+            "OTEL_SERVICE_NAME": f"{config.project.name}-{component}",
+            "OTEL_RESOURCE_ATTRIBUTES": (
+                f"service.namespace=djangoops,djangoops.project={config.project.name},"
+                f"djangoops.component={component}"
+            ),
+            "DJANGOOPS_CORRELATION_ID": "${DJANGOOPS_CORRELATION_ID:-}",
+        }
+    )
+    return environment
+
+
 def _infrastructure_dependencies(config: DjangoOpsConfig) -> dict[str, dict[str, str]]:
     dependencies: dict[str, dict[str, str]] = {}
     if config.services.postgres:
@@ -154,12 +171,12 @@ def _infrastructure_dependencies(config: DjangoOpsConfig) -> dict[str, dict[str,
     return dependencies
 
 
-def _celery_service(config: DjangoOpsConfig, action: list[str]) -> dict[str, Any]:
+def _celery_service(config: DjangoOpsConfig, action: list[str], component: str) -> dict[str, Any]:
     service: dict[str, Any] = {
         "build": dict(_APP_BUILD),
         "command": ["celery", "-A", _django_project_module(config), *action],
         "env_file": list(_APP_ENV_FILE),
-        "environment": _storage_environment(config),
+        "environment": _application_environment(config, component),
         "restart": _RESTART_POLICY,
     }
     dependencies = _infrastructure_dependencies(config)
