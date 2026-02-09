@@ -7,7 +7,9 @@ from typing import Any
 
 import yaml
 
-from djangoops.config import DjangoOpsConfig, parse_config, write_new_text
+from djangoops.config import DjangoOpsConfig, write_new_text
+from djangoops.ecosystem_config import parse_project_config
+from djangoops.integrations import IntegrationConfig
 
 COMPOSE_FILENAME = "docker-compose.yml"
 POSTGRES_IMAGE = "postgres:16"
@@ -18,15 +20,23 @@ _APP_BUILD = {"context": "."}
 _RESTART_POLICY = "unless-stopped"
 
 
-def load_config(path: Path) -> DjangoOpsConfig:
+def load_project_config(path: Path) -> tuple[DjangoOpsConfig, tuple[IntegrationConfig, ...]]:
     try:
         text = path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         raise ValueError(f"{path.name} does not exist") from exc
-    return parse_config(text)
+    return parse_project_config(text)
 
 
-def render_compose(config: DjangoOpsConfig) -> str:
+def load_config(path: Path) -> DjangoOpsConfig:
+    config, _ = load_project_config(path)
+    return config
+
+
+def render_compose(
+    config: DjangoOpsConfig,
+    integrations: tuple[IntegrationConfig, ...] = (),
+) -> str:
     services: dict[str, Any] = {}
     volumes: dict[str, Any] = {"traefik_acme": {}}
 
@@ -62,7 +72,7 @@ def render_compose(config: DjangoOpsConfig) -> str:
             "0.0.0.0:8000",
         ],
         "env_file": list(_APP_ENV_FILE),
-        "environment": _application_environment(config, "web"),
+        "environment": _application_environment(config, "web", integrations),
         "restart": _RESTART_POLICY,
         "expose": ["8000"],
         "labels": [
@@ -74,6 +84,19 @@ def render_compose(config: DjangoOpsConfig) -> str:
             "traefik.http.services.web.loadbalancer.server.port=8000",
         ],
     }
+    runtime = _integration(integrations, "django-runtime")
+    if runtime is not None and runtime.enabled:
+        health_path = runtime.config["health_path"]
+        probe = (
+            "import urllib.request; "
+            f"urllib.request.urlopen('http://127.0.0.1:8000{health_path}', timeout=2).read(1)"
+        )
+        services["web"]["healthcheck"] = {
+            "test": ["CMD", "python", "-c", probe],
+            "interval": "15s",
+            "timeout": "3s",
+            "retries": 3,
+        }
     if dependencies:
         services["web"]["depends_on"] = dependencies
 
@@ -90,7 +113,7 @@ def render_compose(config: DjangoOpsConfig) -> str:
             "healthcheck": {
                 "test": [
                     "CMD-SHELL",
-                    ("pg_isready -U $${POSTGRES_USER:-djangoops} -d $${POSTGRES_DB:-djangoops}"),
+                    "pg_isready -U $${POSTGRES_USER:-djangoops} -d $${POSTGRES_DB:-djangoops}",
                 ],
                 "interval": "10s",
                 "timeout": "5s",
@@ -115,9 +138,13 @@ def render_compose(config: DjangoOpsConfig) -> str:
         volumes["redis_data"] = {}
 
     if config.services.celery:
-        services["celery"] = _celery_service(config, ["worker", "--loglevel=INFO"], "worker")
+        services["celery"] = _celery_service(
+            config, ["worker", "--loglevel=INFO"], "worker", integrations
+        )
     if config.services.celery_beat:
-        services["celery_beat"] = _celery_service(config, ["beat", "--loglevel=INFO"], "beat")
+        services["celery_beat"] = _celery_service(
+            config, ["beat", "--loglevel=INFO"], "beat", integrations
+        )
 
     document = {
         "name": config.project.name,
@@ -128,8 +155,8 @@ def render_compose(config: DjangoOpsConfig) -> str:
 
 
 def generate_compose(config_path: Path, output_path: Path) -> None:
-    config = load_config(config_path)
-    write_new_text(output_path, render_compose(config))
+    config, integrations = load_project_config(config_path)
+    write_new_text(output_path, render_compose(config, integrations))
 
 
 def _storage_environment(config: DjangoOpsConfig) -> dict[str, str]:
@@ -138,28 +165,51 @@ def _storage_environment(config: DjangoOpsConfig) -> dict[str, str]:
         "DJANGOOPS_S3_STATIC_BUCKET": config.storage.static_bucket,
         "DJANGOOPS_S3_MEDIA_BUCKET": config.storage.media_bucket,
         "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID must be set}",
-        "AWS_SECRET_ACCESS_KEY": ("${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY must be set}"),
+        "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY must be set}",
     }
     if config.storage.region is not None:
         environment["AWS_REGION"] = config.storage.region
     return environment
 
 
-def _application_environment(config: DjangoOpsConfig, component: str) -> dict[str, str]:
+def _application_environment(
+    config: DjangoOpsConfig,
+    component: str,
+    integrations: tuple[IntegrationConfig, ...],
+) -> dict[str, str]:
     environment = _storage_environment(config)
+    otlp = _integration(integrations, "otlp-export")
+    if otlp is None:
+        sdk_disabled = "${OTEL_SDK_DISABLED:-true}"
+        endpoint = "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+        namespace = "djangoops"
+    elif otlp.enabled:
+        sdk_disabled = "false"
+        endpoint = otlp.config["endpoint"]
+        namespace = otlp.config["service_namespace"]
+    else:
+        sdk_disabled = "true"
+        endpoint = ""
+        namespace = "djangoops"
     environment.update(
         {
-            "OTEL_SDK_DISABLED": "${OTEL_SDK_DISABLED:-true}",
-            "OTEL_EXPORTER_OTLP_ENDPOINT": "${OTEL_EXPORTER_OTLP_ENDPOINT:-}",
+            "OTEL_SDK_DISABLED": sdk_disabled,
+            "OTEL_EXPORTER_OTLP_ENDPOINT": endpoint,
             "OTEL_SERVICE_NAME": f"{config.project.name}-{component}",
             "OTEL_RESOURCE_ATTRIBUTES": (
-                f"service.namespace=djangoops,djangoops.project={config.project.name},"
+                f"service.namespace={namespace},djangoops.project={config.project.name},"
                 f"djangoops.component={component}"
             ),
             "DJANGOOPS_CORRELATION_ID": "${DJANGOOPS_CORRELATION_ID:-}",
         }
     )
     return environment
+
+
+def _integration(
+    integrations: tuple[IntegrationConfig, ...], name: str
+) -> IntegrationConfig | None:
+    return next((item for item in integrations if item.name == name), None)
 
 
 def _infrastructure_dependencies(config: DjangoOpsConfig) -> dict[str, dict[str, str]]:
@@ -171,12 +221,17 @@ def _infrastructure_dependencies(config: DjangoOpsConfig) -> dict[str, dict[str,
     return dependencies
 
 
-def _celery_service(config: DjangoOpsConfig, action: list[str], component: str) -> dict[str, Any]:
+def _celery_service(
+    config: DjangoOpsConfig,
+    action: list[str],
+    component: str,
+    integrations: tuple[IntegrationConfig, ...],
+) -> dict[str, Any]:
     service: dict[str, Any] = {
         "build": dict(_APP_BUILD),
         "command": ["celery", "-A", _django_project_module(config), *action],
         "env_file": list(_APP_ENV_FILE),
-        "environment": _application_environment(config, component),
+        "environment": _application_environment(config, component, integrations),
         "restart": _RESTART_POLICY,
     }
     dependencies = _infrastructure_dependencies(config)

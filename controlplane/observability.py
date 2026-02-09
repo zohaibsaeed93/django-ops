@@ -72,7 +72,7 @@ def _diagnostic_saved(
         "disconnected",
         "timeout",
     }
-    seen_key = f"diagnostic:{instance.pk}:{instance.status}"
+    seen_key = f"diagnostic:{instance.public_id}:{instance.status}"
     if instance.status not in terminal or not _remember(seen_key):
         return
     seconds = (instance.updated_at - instance.created_at).total_seconds()
@@ -93,7 +93,8 @@ def _release_saved(
     **kwargs: Any,
 ) -> None:
     terminal = {"succeeded", "failed", "cancelled", "rolled_back", "rollback_blocked"}
-    if instance.status not in terminal or not _remember(f"release:{instance.pk}:{instance.status}"):
+    seen_key = f"release:{instance.operation_id}:{instance.status}"
+    if instance.status not in terminal or not _remember(seen_key):
         return
     seconds = (instance.updated_at - instance.created_at).total_seconds()
     duration = int(max(0.0, seconds) * 1000)

@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  observability-python:
+  observability-ecosystem-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,10 @@ jobs:
           enable-cache: true
       - run: uv sync --group dev
       - name: Phase 4 behavior and isolation tests
-        run: uv run pytest tests/test_phase4_observability.py tests/test_phase4_graphql.py
+        run: uv run pytest tests/test_phase4_observability.py tests/test_phase4_graphql.py tests/test_phase4_ecosystem.py tests/test_phase4_ecosystem_paths.py
+      - name: Ecosystem cannot dynamically load user code
+        run: |
+          ! grep -E 'importlib|entry_points|pip install|subprocess|os\.system|eval\(|exec\(' cli/djangoops/integrations.py
 
   observability-agent:
     runs-on: ubuntu-latest
@@ -67,3 +70,17 @@ jobs:
           grep -q OTEL_EXPORTER_OTLP_ENDPOINT /tmp/otel.yaml
           grep -q DJANGOOPS_CORRELATION_ID /tmp/otel.yaml
           ! grep -Eqi 'authorization|collector[_-]?token|password' /tmp/otel.yaml
+
+  release-readiness-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Documentation reflects the current product
+        run: |
+          grep -q 'Phase 3 — Kubernetes/K3s deployment path' README.md
+          grep -q 'Phase 4 — observability and bounded ecosystem' README.md
+          grep -q 'phase4-ecosystem.md' README.md docs/README.md
+          test -s docs/phase4-ecosystem.md
+          ! grep -q 'Phase 2 is active' README.md
+          ! grep -q 'does not add.*Kubernetes/Helm' README.md
+          ! grep -q 'Kubernetes/Helm.*absent' README.md
