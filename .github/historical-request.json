@@ -1,7 +1,9 @@
 {
-  "mode": "integrate",
-  "target_branch": "auto/s3-traefik-https",
-  "expected_head": "40a2d5382fa72d27dbda0370d8158a49f873e2b9",
-  "base": "f1dd9580ad8b84c979b8288793ceb3cac2f9ad6c",
-  "expected_tree": "38ca7f9bbd632bc67b4b82c3c88b6a1c4e003e8a"
+  "mode": "squash",
+  "target_branch": "auto/health-diagnostics",
+  "expected_head": "446a55f7bdb56cb37e6470be534a67894afda2ce",
+  "base": "40a2d5382fa72d27dbda0370d8158a49f873e2b9",
+  "expected_tree": "eb8703d998023721504116e9570a06712556fae2",
+  "date": "2026-01-16T11:05:00+05:00",
+  "message": "feat: add Django-aware health diagnostics"
 }
