@@ -130,7 +130,11 @@ def parse_config(text: str) -> DjangoOpsConfig:
 
 def write_new_config(path: Path, config: DjangoOpsConfig) -> None:
     """Create a new config exclusively and remove partial output on write failure."""
-    rendered = render_config(config)
+    write_new_text(path, render_config(config))
+
+
+def write_new_text(path: Path, rendered: str) -> None:
+    """Create a UTF-8 text file exclusively and clean it up if writing fails."""
     fd: int | None = None
     created = False
     try:
