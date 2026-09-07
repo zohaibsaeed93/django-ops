@@ -1,9 +1,9 @@
 {
   "mode": "squash",
   "target_branch": "auto/phase0-direct-ssh-deploy",
-  "expected_head": "1b4e9e05d958a2f3ceae994a04d0f227aa360892",
+  "expected_head": "db3bef914fffefd2762f14c9027280ef91609cc8",
   "base": "3f32b461c0854acc5d6b347723e887aa0aa6d2b2",
-  "expected_tree": "770749e43b9b4d66743e1362bf194db6e445b657",
+  "expected_tree": "27fb5f26d0a48e1833cbc37c7c31ad67cc5855df",
   "date": "2026-01-09T10:30:00+05:00",
   "message": "feat: add direct SSH single-VPS deployment"
 }
