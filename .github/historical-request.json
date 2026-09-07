@@ -1,23 +1,9 @@
 {
-  "target_branch": "main",
-  "expected_head": "08e86ded053936ca5f7d97d61d56e3c0889181cc",
-  "request_id": "repair-2026-09-07-2",
-  "rewrites": [
-    {
-      "old": "841549a8bf3eca69714c81707cd6a69d7a845277",
-      "date": "2026-01-03T11:20:00+05:00"
-    },
-    {
-      "old": "17aec5c11482d454470bfc8660032d37c05fc515",
-      "date": "2026-01-03T11:30:00+05:00"
-    },
-    {
-      "old": "1a423d319ccaa7d9b00f0c1bf13ab2c8d9e88164",
-      "date": "2026-01-05T10:30:00+05:00"
-    },
-    {
-      "old": "08e86ded053936ca5f7d97d61d56e3c0889181cc",
-      "date": "2026-01-07T11:00:00+05:00"
-    }
-  ]
+  "mode": "squash",
+  "target_branch": "auto/phase0-direct-ssh-deploy",
+  "expected_head": "1b4e9e05d958a2f3ceae994a04d0f227aa360892",
+  "base": "3f32b461c0854acc5d6b347723e887aa0aa6d2b2",
+  "expected_tree": "770749e43b9b4d66743e1362bf194db6e445b657",
+  "date": "2026-01-09T10:30:00+05:00",
+  "message": "feat: add direct SSH single-VPS deployment"
 }
