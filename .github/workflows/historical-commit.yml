@@ -53,7 +53,7 @@ jobs:
               raise SystemExit(f'stale request: expected {expected_head}, found {actual_head}')
 
           mapping: dict[str, str] = {}
-          date_re = re.compile(r'^2026-(01|02)-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$')
+          date_re = re.compile(r'^2026-(01|02)-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$')
           identity = {
               'GIT_AUTHOR_NAME': 'Zohaib',
               'GIT_AUTHOR_EMAIL': 'zohaibsaeed93@gmail.com',
