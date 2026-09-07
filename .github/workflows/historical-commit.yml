@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Rewrite requested commits without changing trees
+      - name: Apply bounded historical metadata request
         shell: bash
         run: |
           set -euo pipefail
@@ -37,22 +37,21 @@ jobs:
           from pathlib import Path
 
           request = json.loads(Path('.github/historical-request.json').read_text())
+          mode = request.get('mode', 'rewrite')
           target_branch = request['target_branch']
           expected_head = request['expected_head']
-          rewrites = request['rewrites']
 
           if target_branch != 'main' and not target_branch.startswith('auto/'):
               raise SystemExit(f'refusing unsupported target branch: {target_branch}')
-          if not isinstance(rewrites, list) or not rewrites:
-              raise SystemExit('rewrites must be a non-empty list')
+          if mode not in {'rewrite', 'squash'}:
+              raise SystemExit(f'unsupported mode: {mode}')
 
-          subprocess.run(['git', 'fetch', 'origin', target_branch, '--prune'], check=True)
+          subprocess.run(['git', 'fetch', 'origin', target_branch, 'main', '--prune'], check=True)
           remote_ref = f'refs/remotes/origin/{target_branch}'
           actual_head = subprocess.check_output(['git', 'rev-parse', remote_ref], text=True).strip()
           if actual_head != expected_head:
               raise SystemExit(f'stale request: expected {expected_head}, found {actual_head}')
 
-          mapping: dict[str, str] = {}
           date_re = re.compile(r'^2026-(01|02)-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$')
           identity = {
               'GIT_AUTHOR_NAME': 'Zohaib',
@@ -61,17 +60,9 @@ jobs:
               'GIT_COMMITTER_EMAIL': 'zohaibsaeed93@gmail.com',
           }
 
-          for item in rewrites:
-              old = item['old']
-              date = item['date']
+          def commit_tree(tree: str, parents: list[str], message: str, date: str) -> str:
               if not date_re.match(date):
                   raise SystemExit(f'refusing timestamp outside Jan/Feb 2026: {date}')
-              subprocess.run(['git', 'cat-file', '-e', f'{old}^{{commit}}'], check=True)
-              tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', old], text=True).strip()
-              message = subprocess.check_output(['git', 'show', '-s', '--format=%B', old], text=True)
-              parents = subprocess.check_output(['git', 'show', '-s', '--format=%P', old], text=True).strip().split()
-              parents = [mapping.get(parent, parent) for parent in parents]
-
               cmd = ['git', 'commit-tree', tree]
               for parent in parents:
                   cmd.extend(['-p', parent])
@@ -80,17 +71,49 @@ jobs:
               env['GIT_AUTHOR_DATE'] = date
               env['GIT_COMMITTER_DATE'] = date
               new = subprocess.check_output(cmd, input=message, text=True, env=env).strip()
-
               new_tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', new], text=True).strip()
               if new_tree != tree:
-                  raise SystemExit(f'tree changed while rewriting {old}')
-              mapping[old] = new
-              print(f'{old} -> {new} @ {date}')
+                  raise SystemExit('tree changed while creating historical commit')
+              return new
 
-          if expected_head not in mapping:
-              raise SystemExit('request must rewrite the current target-branch head')
-          new_head = mapping[expected_head]
           old_tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', expected_head], text=True).strip()
+
+          if mode == 'squash':
+              if not target_branch.startswith('auto/'):
+                  raise SystemExit('squash mode is allowed only for auto/* feature branches')
+              base = request['base']
+              expected_tree = request['expected_tree']
+              date = request['date']
+              message = request['message']
+              current_main = subprocess.check_output(['git', 'rev-parse', 'refs/remotes/origin/main'], text=True).strip()
+              if current_main != base:
+                  raise SystemExit(f'base main moved: expected {base}, found {current_main}')
+              if old_tree != expected_tree:
+                  raise SystemExit(f'feature tree mismatch: expected {expected_tree}, found {old_tree}')
+              ancestry = subprocess.run(['git', 'merge-base', '--is-ancestor', base, expected_head])
+              if ancestry.returncode != 0:
+                  raise SystemExit('feature head is not descended from requested base')
+              new_head = commit_tree(old_tree, [base], message, date)
+          else:
+              rewrites = request['rewrites']
+              if not isinstance(rewrites, list) or not rewrites:
+                  raise SystemExit('rewrites must be a non-empty list')
+              mapping: dict[str, str] = {}
+              for item in rewrites:
+                  old = item['old']
+                  date = item['date']
+                  subprocess.run(['git', 'cat-file', '-e', f'{old}^{{commit}}'], check=True)
+                  tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', old], text=True).strip()
+                  message = subprocess.check_output(['git', 'show', '-s', '--format=%B', old], text=True)
+                  parents = subprocess.check_output(['git', 'show', '-s', '--format=%P', old], text=True).strip().split()
+                  parents = [mapping.get(parent, parent) for parent in parents]
+                  new = commit_tree(tree, parents, message, date)
+                  mapping[old] = new
+                  print(f'{old} -> {new} @ {date}')
+              if expected_head not in mapping:
+                  raise SystemExit('rewrite request must include the current target-branch head')
+              new_head = mapping[expected_head]
+
           new_tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', new_head], text=True).strip()
           if new_tree != old_tree:
               raise SystemExit('final product tree changed; refusing push')
@@ -102,7 +125,7 @@ jobs:
           ], check=True)
 
           Path('/tmp/historical-result.txt').write_text(
-              f'target_branch={target_branch}\nold_head={expected_head}\nnew_head={new_head}\ntree={new_tree}\n'
+              f'mode={mode}\ntarget_branch={target_branch}\nold_head={expected_head}\nnew_head={new_head}\ntree={new_tree}\n'
           )
           PY
 
