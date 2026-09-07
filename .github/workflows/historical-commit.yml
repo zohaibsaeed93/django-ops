@@ -1,0 +1,115 @@
+name: Historical commit controller
+
+on:
+  push:
+    branches:
+      - automation/historical-commits
+    paths:
+      - .github/historical-request.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: djangoops-historical-commit-controller
+  cancel-in-progress: false
+
+jobs:
+  rewrite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout controller branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rewrite requested commits without changing trees
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          request = json.loads(Path('.github/historical-request.json').read_text())
+          target_branch = request['target_branch']
+          expected_head = request['expected_head']
+          rewrites = request['rewrites']
+
+          if target_branch != 'main' and not target_branch.startswith('auto/'):
+              raise SystemExit(f'refusing unsupported target branch: {target_branch}')
+          if not isinstance(rewrites, list) or not rewrites:
+              raise SystemExit('rewrites must be a non-empty list')
+
+          subprocess.run(['git', 'fetch', 'origin', target_branch, '--prune'], check=True)
+          remote_ref = f'refs/remotes/origin/{target_branch}'
+          actual_head = subprocess.check_output(['git', 'rev-parse', remote_ref], text=True).strip()
+          if actual_head != expected_head:
+              raise SystemExit(f'stale request: expected {expected_head}, found {actual_head}')
+
+          mapping: dict[str, str] = {}
+          date_re = re.compile(r'^2026-(01|02)-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$')
+          identity = {
+              'GIT_AUTHOR_NAME': 'Zohaib',
+              'GIT_AUTHOR_EMAIL': 'zohaibsaeed93@gmail.com',
+              'GIT_COMMITTER_NAME': 'Zohaib',
+              'GIT_COMMITTER_EMAIL': 'zohaibsaeed93@gmail.com',
+          }
+
+          for item in rewrites:
+              old = item['old']
+              date = item['date']
+              if not date_re.match(date):
+                  raise SystemExit(f'refusing timestamp outside Jan/Feb 2026: {date}')
+              subprocess.run(['git', 'cat-file', '-e', f'{old}^{{commit}}'], check=True)
+              tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', old], text=True).strip()
+              message = subprocess.check_output(['git', 'show', '-s', '--format=%B', old], text=True)
+              parents = subprocess.check_output(['git', 'show', '-s', '--format=%P', old], text=True).strip().split()
+              parents = [mapping.get(parent, parent) for parent in parents]
+
+              cmd = ['git', 'commit-tree', tree]
+              for parent in parents:
+                  cmd.extend(['-p', parent])
+              env = os.environ.copy()
+              env.update(identity)
+              env['GIT_AUTHOR_DATE'] = date
+              env['GIT_COMMITTER_DATE'] = date
+              new = subprocess.check_output(cmd, input=message, text=True, env=env).strip()
+
+              new_tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', new], text=True).strip()
+              if new_tree != tree:
+                  raise SystemExit(f'tree changed while rewriting {old}')
+              mapping[old] = new
+              print(f'{old} -> {new} @ {date}')
+
+          if expected_head not in mapping:
+              raise SystemExit('request must rewrite the current target-branch head')
+          new_head = mapping[expected_head]
+          old_tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', expected_head], text=True).strip()
+          new_tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', new_head], text=True).strip()
+          if new_tree != old_tree:
+              raise SystemExit('final product tree changed; refusing push')
+
+          subprocess.run([
+              'git', 'push',
+              f'--force-with-lease=refs/heads/{target_branch}:{expected_head}',
+              'origin', f'{new_head}:refs/heads/{target_branch}'
+          ], check=True)
+
+          Path('/tmp/historical-result.txt').write_text(
+              f'target_branch={target_branch}\nold_head={expected_head}\nnew_head={new_head}\ntree={new_tree}\n'
+          )
+          PY
+
+      - name: Report result
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f /tmp/historical-result.txt ]]; then
+            cat /tmp/historical-result.txt
+          fi
