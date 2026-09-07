@@ -1,9 +1,9 @@
 {
   "mode": "squash",
   "target_branch": "auto/s3-traefik-https",
-  "expected_head": "f8f4c7d5630b3b2242efa4a72174b5e31a3d628c",
+  "expected_head": "bbda2ff5d12a404e618db74359f51e95e9e46020",
   "base": "f1dd9580ad8b84c979b8288793ceb3cac2f9ad6c",
-  "expected_tree": "ccda6ab99d50af9d8f37086d6a14dcc825caca4d",
+  "expected_tree": "38ca7f9bbd632bc67b4b82c3c88b6a1c4e003e8a",
   "date": "2026-01-14T10:20:00+05:00",
   "message": "feat: add S3-compatible asset storage and Traefik HTTPS"
 }
