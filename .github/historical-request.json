@@ -1,9 +1,9 @@
 {
   "mode": "squash",
-  "target_branch": "auto/migration-safety",
-  "expected_head": "919d0f7ee3b99290d92ebc5a6e0dd6935a76d55f",
-  "base": "d68627af2d278a89626073e97d04f7c63362f346",
-  "expected_tree": "ce0527c9e638736cfed73a42e555b5d4f4250ba6",
-  "date": "2026-01-11T11:00:00+05:00",
-  "message": "feat: add migration pre-flight and automatic deployment rollback"
+  "target_branch": "auto/s3-traefik-https",
+  "expected_head": "f8f4c7d5630b3b2242efa4a72174b5e31a3d628c",
+  "base": "f1dd9580ad8b84c979b8288793ceb3cac2f9ad6c",
+  "expected_tree": "ccda6ab99d50af9d8f37086d6a14dcc825caca4d",
+  "date": "2026-01-14T10:20:00+05:00",
+  "message": "feat: add S3-compatible asset storage and Traefik HTTPS"
 }
