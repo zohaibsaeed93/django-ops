@@ -7,6 +7,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from djangoops.compose import COMPOSE_FILENAME, generate_compose
 from djangoops.config import DjangoOpsConfig, write_new_config
 
 CONFIG_FILENAME = "djangoops.yaml"
@@ -31,7 +32,22 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--django-module",
         required=True,
-        help="dotted Django project module, for example 'config' or 'myapp.settings'",
+        help="dotted Django project module, for example 'config' or 'myapp'",
+    )
+
+    compose_parser = subparsers.add_parser(
+        "compose",
+        help="generate the Phase 0 Docker Compose stack",
+    )
+    compose_parser.add_argument(
+        "--config",
+        default=CONFIG_FILENAME,
+        help=f"configuration path (default: {CONFIG_FILENAME})",
+    )
+    compose_parser.add_argument(
+        "--output",
+        default=COMPOSE_FILENAME,
+        help=f"output path (default: {COMPOSE_FILENAME})",
     )
     return parser
 
@@ -60,6 +76,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 2
         print(f"Created {target}")
+        return 0
+
+    if args.command == "compose":
+        config_path = Path(args.config)
+        output_path = Path(args.output)
+        try:
+            generate_compose(config_path, output_path)
+        except FileExistsError:
+            print(
+                f"error: {output_path} already exists; refusing to overwrite it",
+                file=sys.stderr,
+            )
+            return 2
+        except (OSError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        print(f"Created {output_path}")
         return 0
 
     parser.error("unsupported command")
