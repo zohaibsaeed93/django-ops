@@ -1,6 +1,7 @@
 {
   "target_branch": "main",
   "expected_head": "08e86ded053936ca5f7d97d61d56e3c0889181cc",
+  "request_id": "repair-2026-09-07-2",
   "rewrites": [
     {
       "old": "841549a8bf3eca69714c81707cd6a69d7a845277",
