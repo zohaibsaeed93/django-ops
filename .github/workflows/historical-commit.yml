@@ -43,8 +43,10 @@ jobs:
 
           if target_branch != 'main' and not target_branch.startswith('auto/'):
               raise SystemExit(f'refusing unsupported target branch: {target_branch}')
-          if mode not in {'rewrite', 'squash'}:
+          if mode not in {'rewrite', 'squash', 'integrate'}:
               raise SystemExit(f'unsupported mode: {mode}')
+          if mode == 'integrate' and not target_branch.startswith('auto/'):
+              raise SystemExit('integrate mode is allowed only for auto/* feature branches')
 
           subprocess.run(['git', 'fetch', 'origin', target_branch, 'main', '--prune'], check=True)
           remote_ref = f'refs/remotes/origin/{target_branch}'
@@ -94,6 +96,33 @@ jobs:
               if ancestry.returncode != 0:
                   raise SystemExit('feature head is not descended from requested base')
               new_head = commit_tree(old_tree, [base], message, date)
+              push_branch = target_branch
+
+          elif mode == 'integrate':
+              base = request['base']
+              expected_tree = request['expected_tree']
+              current_main = subprocess.check_output(['git', 'rev-parse', 'refs/remotes/origin/main'], text=True).strip()
+              if current_main != base:
+                  raise SystemExit(f'main moved: expected {base}, found {current_main}')
+              if old_tree != expected_tree:
+                  raise SystemExit(f'feature tree mismatch: expected {expected_tree}, found {old_tree}')
+              parents = subprocess.check_output(['git', 'show', '-s', '--format=%P', expected_head], text=True).strip().split()
+              if parents != [base]:
+                  raise SystemExit(f'feature head must be exactly one commit above main base {base}')
+              author = subprocess.check_output(['git', 'show', '-s', '--format=%an <%ae>', expected_head], text=True).strip()
+              committer = subprocess.check_output(['git', 'show', '-s', '--format=%cn <%ce>', expected_head], text=True).strip()
+              author_date = subprocess.check_output(['git', 'show', '-s', '--format=%aI', expected_head], text=True).strip()
+              committer_date = subprocess.check_output(['git', 'show', '-s', '--format=%cI', expected_head], text=True).strip()
+              expected_identity = 'Zohaib <zohaibsaeed93@gmail.com>'
+              if author != expected_identity or committer != expected_identity:
+                  raise SystemExit(f'feature identity mismatch: author={author!r} committer={committer!r}')
+              if not date_re.match(author_date) or not date_re.match(committer_date):
+                  raise SystemExit(f'feature dates must both be Jan/Feb 2026: author={author_date} committer={committer_date}')
+              if author_date != committer_date:
+                  raise SystemExit(f'author/committer dates differ: {author_date} vs {committer_date}')
+              new_head = expected_head
+              push_branch = 'main'
+
           else:
               rewrites = request['rewrites']
               if not isinstance(rewrites, list) or not rewrites:
@@ -113,19 +142,23 @@ jobs:
               if expected_head not in mapping:
                   raise SystemExit('rewrite request must include the current target-branch head')
               new_head = mapping[expected_head]
+              push_branch = target_branch
 
           new_tree = subprocess.check_output(['git', 'show', '-s', '--format=%T', new_head], text=True).strip()
           if new_tree != old_tree:
               raise SystemExit('final product tree changed; refusing push')
 
-          subprocess.run([
-              'git', 'push',
-              f'--force-with-lease=refs/heads/{target_branch}:{expected_head}',
-              'origin', f'{new_head}:refs/heads/{target_branch}'
-          ], check=True)
+          if mode == 'integrate':
+              subprocess.run(['git', 'push', 'origin', f'{new_head}:refs/heads/main'], check=True)
+          else:
+              subprocess.run([
+                  'git', 'push',
+                  f'--force-with-lease=refs/heads/{target_branch}:{expected_head}',
+                  'origin', f'{new_head}:refs/heads/{target_branch}'
+              ], check=True)
 
           Path('/tmp/historical-result.txt').write_text(
-              f'mode={mode}\ntarget_branch={target_branch}\nold_head={expected_head}\nnew_head={new_head}\ntree={new_tree}\n'
+              f'mode={mode}\ntarget_branch={target_branch}\npush_branch={push_branch}\nold_head={expected_head}\nnew_head={new_head}\ntree={new_tree}\n'
           )
           PY
 
