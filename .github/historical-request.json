@@ -1,9 +1,9 @@
 {
   "mode": "squash",
   "target_branch": "auto/migration-safety",
-  "expected_head": "2b511f4a38d2c886402a1078a0354d8e919f41a8",
+  "expected_head": "919d0f7ee3b99290d92ebc5a6e0dd6935a76d55f",
   "base": "d68627af2d278a89626073e97d04f7c63362f346",
-  "expected_tree": "ce343d77d44975228ac393b5dfaeba9f00914226",
+  "expected_tree": "ce0527c9e638736cfed73a42e555b5d4f4250ba6",
   "date": "2026-01-11T11:00:00+05:00",
   "message": "feat: add migration pre-flight and automatic deployment rollback"
 }
