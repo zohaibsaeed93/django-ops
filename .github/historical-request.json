@@ -1,9 +1,9 @@
 {
   "mode": "squash",
-  "target_branch": "auto/health-diagnostics",
-  "expected_head": "446a55f7bdb56cb37e6470be534a67894afda2ce",
+  "target_branch": "auto/django-health-diagnostics",
+  "expected_head": "15bbb03bdb51dd4730547730469b74be07e822bc",
   "base": "40a2d5382fa72d27dbda0370d8158a49f873e2b9",
-  "expected_tree": "eb8703d998023721504116e9570a06712556fae2",
+  "expected_tree": "9674adc9bfff457e8f5c6fdad16c885ebbeb33a6",
   "date": "2026-01-16T11:05:00+05:00",
   "message": "feat: add Django-aware health diagnostics"
 }
