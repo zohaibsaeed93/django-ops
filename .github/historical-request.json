@@ -1,9 +1,9 @@
 {
   "mode": "squash",
   "target_branch": "auto/scheduled-backups-restore",
-  "expected_head": "4558be497498fb25e6938a4f831915b9dc53913b",
+  "expected_head": "a655fe999def9a9635a0a67fc81ae630b853916c",
   "base": "62399daaffeea414209ce3055d9f36a1083d9f09",
-  "expected_tree": "31549df6f76151c59bcf51516923ba8a223c051c",
+  "expected_tree": "8a0cda71fa470d4073c5e8be8dfc159043586da7",
   "date": "2026-01-20T09:40:00+05:00",
   "message": "feat: add scheduled backups and restore"
 }
