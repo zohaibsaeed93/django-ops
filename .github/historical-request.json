@@ -1,9 +1,9 @@
 {
   "mode": "squash",
   "target_branch": "auto/phase1-agent-control-channel",
-  "expected_head": "2c2aa918f6213bcee9f014e85b1c7ec05183154e",
+  "expected_head": "234970973a22c730441dbb4ad0ef84d668e7183f",
   "base": "f339f9ebb904a0c16fdbae99a2c5f7d9d6be02e0",
-  "expected_tree": "ecb61008b21170232fb930765bf61407f16c9fc6",
+  "expected_tree": "db25ae2c36082148ab528749404e6a66bcf69d13",
   "date": "2026-01-24T16:50:00+05:00",
   "message": "feat: add secure Phase 1 agent control channel with streamed Django diagnostics and cancellation"
 }
