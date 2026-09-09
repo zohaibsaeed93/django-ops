@@ -1,9 +1,9 @@
 {
   "mode": "squash",
   "target_branch": "auto/phase0-dogfood",
-  "expected_head": "43423275a40bf96c611e607d83559d548d59b47d",
+  "expected_head": "ff0148c8bd8ffe0b7566c6b50d75df7d1e139cf3",
   "base": "0fbd88f93377565c387b2592d0c89e81fdc95bb6",
-  "expected_tree": "8213011275d3ab0063bee424526a13f8ca9bc3a0",
+  "expected_tree": "cbdbef4f397b9f2913dfbf408147dd4e94584249",
   "date": "2026-01-21T14:15:00+05:00",
   "message": "test: dogfood the complete Phase 0 flow on a real Django app"
 }
