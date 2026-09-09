@@ -1,9 +1,7 @@
 {
-  "mode": "squash",
+  "mode": "integrate",
   "target_branch": "auto/phase2-dashboard-graphql",
-  "expected_head": "cc906d58db62a404e4121be36747c06890f908f0",
+  "expected_head": "24c25198a65c0d9f2e52595f219218db70194c2b",
   "base": "b007778ac3a095961325d430df00828804ab617c",
-  "expected_tree": "cd3d47888423bf2cad6960aadaf8bdb05f96bed5",
-  "date": "2026-01-29T10:25:00+05:00",
-  "message": "feat: deliver the authenticated Phase 2 operations dashboard and GraphQL control API"
+  "expected_tree": "cd3d47888423bf2cad6960aadaf8bdb05f96bed5"
 }
