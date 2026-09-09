@@ -1,7 +1,7 @@
 {
-  "mode": "squash",
+  "mode": "integrate",
   "target_branch": "auto/phase3-platform-strategy",
-  "expected_head": "296660981bf696559f7e59e601634fcce64a9d14",
+  "expected_head": "4b8817405521bd3baf537fd92e9346dca565dda6",
   "base": "24c25198a65c0d9f2e52595f219218db70194c2b",
   "expected_tree": "bc2bfd7ad094bae9ef0d47334cfa6267a0c34fb3",
   "date": "2026-02-02T15:40:00+05:00",
