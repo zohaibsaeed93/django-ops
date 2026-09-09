@@ -1,9 +1,9 @@
 {
-  "mode": "integrate",
-  "target_branch": "auto/phase0-dogfood",
-  "expected_head": "f339f9ebb904a0c16fdbae99a2c5f7d9d6be02e0",
-  "base": "0fbd88f93377565c387b2592d0c89e81fdc95bb6",
-  "expected_tree": "cbdbef4f397b9f2913dfbf408147dd4e94584249",
-  "date": "2026-01-21T14:15:00+05:00",
-  "message": "test: dogfood the complete Phase 0 flow on a real Django app"
+  "mode": "squash",
+  "target_branch": "auto/phase1-agent-control-channel",
+  "expected_head": "f09504dbd853e2559845a6265fec5e6749f82eaa",
+  "base": "f339f9ebb904a0c16fdbae99a2c5f7d9d6be02e0",
+  "expected_tree": "25ab6c6742297f8aba37dd1c547ad9100ee4560c",
+  "date": "2026-01-24T16:50:00+05:00",
+  "message": "feat: add secure Phase 1 agent control channel with streamed Django diagnostics and cancellation"
 }
