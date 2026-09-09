@@ -1,7 +1,7 @@
 {
-  "mode": "squash",
+  "mode": "integrate",
   "target_branch": "auto/phase0-dogfood",
-  "expected_head": "ff0148c8bd8ffe0b7566c6b50d75df7d1e139cf3",
+  "expected_head": "f339f9ebb904a0c16fdbae99a2c5f7d9d6be02e0",
   "base": "0fbd88f93377565c387b2592d0c89e81fdc95bb6",
   "expected_tree": "cbdbef4f397b9f2913dfbf408147dd4e94584249",
   "date": "2026-01-21T14:15:00+05:00",
