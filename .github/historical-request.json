@@ -1,9 +1,9 @@
 {
   "mode": "squash",
   "target_branch": "auto/phase3-kubernetes-helm",
-  "expected_head": "c5cd357172b3f2d7ce6a27841068ee4c5e684d37",
+  "expected_head": "d3f2ed1bccab3f15e6c7fa36617ef1b5d599f6bd",
   "base": "4b8817405521bd3baf537fd92e9346dca565dda6",
-  "expected_tree": "51d738aeeb867d39637242c4607e0415d8a48946",
+  "expected_tree": "80619b634ac7f4a81d517ad8d43b0929a5c70f42",
   "date": "2026-02-03T11:05:00+05:00",
   "message": "feat: deliver the Phase 3 Kubernetes/Helm Django deployment path"
 }
