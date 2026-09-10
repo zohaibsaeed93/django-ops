@@ -1,9 +1,9 @@
 {
-  "mode": "integrate",
-  "target_branch": "auto/phase3-platform-strategy",
-  "expected_head": "4b8817405521bd3baf537fd92e9346dca565dda6",
-  "base": "24c25198a65c0d9f2e52595f219218db70194c2b",
-  "expected_tree": "bc2bfd7ad094bae9ef0d47334cfa6267a0c34fb3",
-  "date": "2026-02-02T15:40:00+05:00",
-  "message": "docs: decide Phase 3 platform strategy after Coolify/Dokku evaluation"
+  "mode": "squash",
+  "target_branch": "auto/phase3-kubernetes-helm",
+  "expected_head": "c5cd357172b3f2d7ce6a27841068ee4c5e684d37",
+  "base": "4b8817405521bd3baf537fd92e9346dca565dda6",
+  "expected_tree": "51d738aeeb867d39637242c4607e0415d8a48946",
+  "date": "2026-02-03T11:05:00+05:00",
+  "message": "feat: deliver the Phase 3 Kubernetes/Helm Django deployment path"
 }
