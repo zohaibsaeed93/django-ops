@@ -1,9 +1,7 @@
 {
-  "mode": "squash",
+  "mode": "integrate",
   "target_branch": "auto/phase4-observability",
-  "expected_head": "c25406301b3039cfb0cada882f70db271287a47b",
+  "expected_head": "d5db48ad45bcc890503a890e3ea05e70f46b46cc",
   "base": "3cc73a5a9ada331b517ef817ffd510d10f856d4e",
-  "expected_tree": "f38f690d0a094d1a13bf567bed014a9dc4a988d5",
-  "date": "2026-02-06T09:45:00+05:00",
-  "message": "feat: deliver Django-native telemetry correlation and Prometheus/OpenTelemetry observability"
+  "expected_tree": "f38f690d0a094d1a13bf567bed014a9dc4a988d5"
 }
