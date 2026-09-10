@@ -1,7 +1,9 @@
 {
-  "mode": "integrate",
-  "target_branch": "auto/phase4-observability",
-  "expected_head": "d5db48ad45bcc890503a890e3ea05e70f46b46cc",
-  "base": "3cc73a5a9ada331b517ef817ffd510d10f856d4e",
-  "expected_tree": "f38f690d0a094d1a13bf567bed014a9dc4a988d5"
+  "mode": "squash",
+  "target_branch": "auto/phase4-ecosystem-readiness",
+  "expected_head": "8c78a54a541550a9d03c606aa7e5fb03f9771d0f",
+  "base": "d5db48ad45bcc890503a890e3ea05e70f46b46cc",
+  "expected_tree": "9d178461263cfdad5a6f7a59bd4266053df60766",
+  "date": "2026-02-09T14:20:00+05:00",
+  "message": "feat: deliver the bounded DjangoOps ecosystem contract and final release-ready documentation"
 }
