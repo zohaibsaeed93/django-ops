@@ -37,10 +37,16 @@ dev = [
 ]
 
 [tool.setuptools]
-package-dir = {"" = "cli"}
+package-dir = {"djangoops" = "cli/djangoops", "controlplane" = "controlplane"}
+include-package-data = false
 
 [tool.setuptools.packages.find]
-where = ["cli"]
+where = ["cli", "."]
+include = ["djangoops*", "controlplane*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+controlplane = ["templates/controlplane/*.html"]
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"

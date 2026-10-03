@@ -33,7 +33,7 @@ def test_phase0_dogfood_fixture_is_real_django_and_secret_free() -> None:
         "dogfood/migrations/0001_initial.py",
         "dogfood/static/dogfood/marker.txt",
     }
-    files = {str(path.relative_to(FIXTURE)) for path in FIXTURE.rglob("*") if path.is_file()}
+    files = {path.relative_to(FIXTURE).as_posix() for path in FIXTURE.rglob("*") if path.is_file()}
     assert required <= files
 
     settings = (FIXTURE / "dogfood/settings.py").read_text(encoding="utf-8")

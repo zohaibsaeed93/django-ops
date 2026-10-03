@@ -165,6 +165,24 @@ uv run djangoops-controlplane
 
 The control-plane listener defaults to loopback. Public production deployments should terminate TLS in front of it.
 
+For dashboard development without an agent gateway, use `uv run python manage.py runserver`.
+The combined `djangoops-controlplane` process also requires the TLS certificate, private key,
+and agent token environment described in `docs/phase1-agent-channel.md`.
+
+On Windows, after `uv sync --group dev`, start the local dashboard with:
+
+```powershell
+.\scripts\run-local.ps1
+```
+
+This applies migrations, stores the development database in `.venv/djangoops-local.sqlite3`,
+and serves the dashboard at `http://127.0.0.1:8000`. Create a login account in that database with:
+
+```powershell
+$env:DJANGOOPS_WEB_DB = Join-Path (Get-Location) '.venv\djangoops-local.sqlite3'
+.\.venv\Scripts\python.exe manage.py createsuperuser
+```
+
 ## Initialize a Django project
 
 From a Django application directory:

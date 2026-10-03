@@ -24,3 +24,6 @@ htmlcov/
 build/
 dist/
 *.egg-info/
+
+# Local control-plane database
+djangoops-controlplane.sqlite3*
