@@ -260,6 +260,28 @@
     });
   };
   const renderState = () => {
+    const explored = state.explored.size;
+    setText("[data-tour-count]", explored + " of 4 explored");
+    $("[data-tour-progress]").value = explored;
+    $$("[data-tour-step]").forEach((button, index) => {
+      const done = state.explored.has(button.dataset.tourStep);
+      button.classList.toggle("completed", done);
+      $(".step-number", button).textContent = done
+        ? "✓"
+        : String(index + 1).padStart(2, "0");
+      button.setAttribute(
+        "aria-label",
+        (done ? "Completed: " : "Explore: ") +
+          button.textContent.trim().replace(/^(✓|0[1-4])\s*/, ""),
+      );
+    });
+    setBadge(
+      $("[data-system-status]"),
+      state.releaseHealthy && state.health === "healthy"
+        ? "Stack healthy"
+        : "Needs attention",
+      state.releaseHealthy && state.health === "healthy" ? "good" : "warning",
+    );
     setText("[data-release]", state.release);
     const health = $("[data-health-count]");
     health.replaceChildren(
@@ -401,6 +423,7 @@
       release: "v1.8.2",
       releaseHealthy: true,
       nextRelease: 3,
+      explored: new Set(),
       health: "healthy",
       records: 1240,
       backups: [{ id: 1, records: 1240 }],
@@ -434,6 +457,7 @@
     setBadge($("[data-deploy-status]"), "Ready to try");
     $("#health-scenario").value = "healthy";
     $("#deploy-scenario").value = "success";
+    $("#restore-scenario").value = "valid";
     message(
       "[data-diagnostic-result]",
       "Sample baseline: all checks passed. Run a scenario to explore the result.",
@@ -474,6 +498,7 @@
     await delay(1100);
     if (token !== generation) return;
     state.health = scenario;
+    state.explored.add("health");
     renderChecks(scenario);
     setBadge(
       $("[data-diagnostic-status]"),
@@ -522,6 +547,8 @@
     result,
     lesson,
   ) => {
+    if (outcome === "Succeeded") state.explored.add("deploy");
+    if (outcome === "Migration blocked") state.explored.add("migration");
     state.releases.unshift({ version, outcome, tone, compatibility });
     state.releases = state.releases.slice(0, 8);
     setBadge($("[data-deploy-status]"), outcome, tone);
@@ -573,7 +600,10 @@
       );
       await delay(800);
       if (token !== generation) return;
-      if (index === 1 && scenario === "migration_fail") {
+      if (
+        index === 1 &&
+        (scenario === "migration_fail" || state.health === "database")
+      ) {
         pipeline("[data-deploy-pipeline]", ["done", "failed", "", ""]);
         note("Migration failed. Activation never started.", "failed");
         finishDeployment(
@@ -581,7 +611,9 @@
           "Migration blocked",
           "failed",
           "Not established",
-          "Migration failure blocked activation. " +
+          (state.health === "database"
+            ? "The database is unavailable, so the migration gate blocked activation. "
+            : "Migration failure blocked activation. ") +
             previous +
             " remains active.",
           "DjangoOps keeps the existing release active when migration fails. Review the migration; it does not guess reverse migrations.",
@@ -590,13 +622,15 @@
       }
       if (index === 2) {
         deployment.activated = true;
-        state.health = "healthy";
         state.release = version;
         renderState();
       }
-      if (index === 3 && scenario !== "success") {
+      if (
+        index === 3 &&
+        (scenario !== "success" || state.health === "worker")
+      ) {
         pipeline("[data-deploy-pipeline]", ["done", "done", "done", "failed"]);
-        if (scenario === "health_fail") {
+        if (scenario === "health_fail" || scenario === "success") {
           state.release = previous;
           state.releaseHealthy = previousHealthy;
           note(
@@ -608,7 +642,12 @@
             "Rolled back",
             "good",
             "Compatible",
-            "Health check failed. Safe rollback restored " + previous + ".",
+            "Health check failed. Safe rollback restored " +
+              previous +
+              "." +
+              (state.health === "worker"
+                ? " The existing worker issue still needs attention."
+                : ""),
             "A compatible schema permits application rollback. This restores the image and configuration, not reverse database migrations.",
           );
         } else {
@@ -679,7 +718,8 @@
     if (busy) return;
     const token = ++generation,
       backup = { ...state.backups.at(-1) },
-      preserved = state.records;
+      preserved = state.records,
+      corrupt = $("#restore-scenario").value === "corrupt";
     lock(true);
     const phases = [
       "Validating sample database and media backup",
@@ -698,8 +738,24 @@
       message("[data-restore-result]", phases[index] + "…");
       await delay(650);
       if (token !== generation) return;
+      if (index === 0 && corrupt) {
+        pipeline("[data-restore-pipeline]", ["failed", "", "", ""]);
+        message(
+          "[data-restore-result]",
+          "Sample backup rejected: checksum validation failed. Writers stayed running and the current dataset was not changed. Select a valid backup before retrying.",
+          "failed",
+        );
+        record(
+          "Sample backup validation failed",
+          "Restore blocked before writers were stopped or data changed",
+          true,
+        );
+        lock(false);
+        return;
+      }
     }
     state.records = backup.records;
+    state.explored.add("restore");
     const healthy = state.releaseHealthy && state.health === "healthy";
     pipeline("[data-restore-pipeline]", [
       "done",

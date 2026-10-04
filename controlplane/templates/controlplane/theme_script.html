@@ -1,0 +1,54 @@
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+  let preference;
+  const valid = (value) => value === "dark" || value === "light";
+  try {
+    preference = localStorage.getItem("djangoops.theme");
+  } catch {}
+  const apply = (theme) => {
+    root.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]').content =
+      theme === "dark" ? "#101117" : "#f5f4f8";
+    document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+      const dark = theme === "dark";
+      const label = "Switch to " + (dark ? "light" : "dark") + " mode";
+      button.setAttribute("aria-pressed", String(dark));
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.querySelector("[data-theme-label]").textContent = dark
+        ? "Light mode"
+        : "Dark mode";
+    });
+  };
+  apply(root.dataset.theme);
+  document.querySelector(".skip-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    const main = document.querySelector("#main-content");
+    main.focus();
+    main.scrollIntoView({ block: "start", behavior: "instant" });
+  });
+  document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      preference = root.dataset.theme === "dark" ? "light" : "dark";
+      apply(preference);
+      try {
+        localStorage.setItem("djangoops.theme", preference);
+      } catch {}
+    });
+  });
+  systemTheme.addEventListener("change", (event) => {
+    if (!valid(preference)) apply(event.matches ? "dark" : "light");
+  });
+  window.addEventListener("storage", (event) => {
+    if (event.key === "djangoops.theme" || event.key === null) {
+      preference = event.newValue;
+      apply(
+        valid(preference) ? preference : systemTheme.matches ? "dark" : "light",
+      );
+    }
+  });
+})();
+</script>

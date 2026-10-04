@@ -1,0 +1,15 @@
+<section class="card section-space">
+  <div class="card-header"><div><h2>What you can explore — and where it runs</h2><p>The interactive demo teaches release decisions. The real platform also includes these tools.</p></div></div>
+  <div class="table-wrap"><table class="capability-table">
+    <thead><tr><th>Capability</th><th>Real interface</th><th>Local walkthrough</th></tr></thead>
+    <tbody>
+      <tr><td>Project configuration & Compose</td><td><code>djangoops init</code><br><code>djangoops compose</code></td><td>Setup guide; generates Django, PostgreSQL, Redis, Celery, Beat, and Traefik configuration.</td></tr>
+      <tr><td>Django-aware diagnostics</td><td>Connected agent + dashboard<br><code>djangoops health</code> via SSH</td><td>Healthy, unavailable database, and missing worker scenarios with actionable results.</td></tr>
+      <tr><td>Deployment & migration gates</td><td><code>djangoops deploy</code> via SSH<br>Kubernetes via GraphQL</td><td>Success, failed migration, health failure, safe/blocked rollback, and cancellation.</td></tr>
+      <tr><td>Backups & recovery</td><td><code>backup-run</code>, <code>backup-list</code><br><code>backup-schedule</code>, <code>backup-restore</code> via SSH</td><td>Save sample data, reject a corrupt backup, preserve current state, restore, and verify health.</td></tr>
+      <tr><td>Secure agent & project access</td><td>Outbound TLS/gRPC + session auth<br>Project membership and CSRF</td><td>Architecture guide and live connection status. Protocol security requires a running agent.</td></tr>
+      <tr><td>Telemetry & supported integrations</td><td>Authenticated metrics, optional OTLP<br>Allowlisted integration contract</td><td>Live telemetry summary and setup references. No collector or external integrations are configured by this demo.</td></tr>
+      <tr><td>HTTPS & S3-compatible storage</td><td>Traefik/ACME + external S3<br>Operator-provisioned runtime settings</td><td>Setup references; needs your DNS, VPS, storage account, and credentials for live verification.</td></tr>
+    </tbody>
+  </table></div>
+</section>

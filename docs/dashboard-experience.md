@@ -17,6 +17,12 @@ The launcher enables `DJANGOOPS_WEB_DEMO=1`. The feature also requires Django de
 mode; a query parameter cannot turn it on in production. Authentication is still
 required for both workspaces.
 
+The shared theme toggle works in the demo, live workspace, and sign-in screen.
+It follows the operating system on first visit and saves an explicit light/dark
+choice in this browser. The saved preference is applied before painting and
+survives navigation, sign-out, and reload. If browser storage is unavailable,
+the toggle still works for the current page.
+
 Use the four-step tour on the overview:
 
 1. **Diagnostics:** compare a healthy application with a database or Celery failure.
@@ -32,10 +38,20 @@ Use the four-step tour on the overview:
    the latest sample backup. The walkthrough shows validation, preservation of current
    state, database/media restore, writer restart, and health verification. Remaining
    release or service problems are not silently declared healthy after a data restore.
+   Try the corrupt-backup scenario to see validation reject a restore before
+   writers are stopped or the dataset changes.
+
+The tour records completed exercises rather than merely visited sections. Reset
+clears those markers and invalidates an in-flight sample request. Deploying a new
+sample image does not repair an existing database or worker outage: the migration
+or health gate still stops the release. "Last diagnostic" reports the last scan;
+the release map separately shows whether the sample stack needs attention.
 
 The **How DjangoOps works** guide explains the control plane, outbound authenticated
 agent, and application environment. **Project setup** explains the transition to a
 real VPS/Compose or existing Kubernetes target and points to the repository runbooks.
+Its capability table explains which features have an interactive sample, which
+remain CLI/API operations, and which need external infrastructure to verify.
 
 ## Live operations
 

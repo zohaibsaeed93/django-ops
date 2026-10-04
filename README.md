@@ -178,7 +178,9 @@ On Windows, after `uv sync --group dev`, start the local dashboard with:
 This applies migrations, stores the development database in `.venv/djangoops-local.sqlite3`,
 and serves the dashboard at `http://127.0.0.1:8000`. It also enables the interactive demo:
 an explicitly labeled browser simulation of diagnostics, migration gates, rollout/rollback,
-cancellation, and database/media recovery. Switch to **Live workspace** to view real
+cancellation, corrupt-backup rejection, and database/media recovery. The guided tour
+tracks completed exercises. Use the shared light/dark theme toggle to save your browser's
+appearance preference across the dashboard and sign-in screen. Switch to **Live workspace** to view real
 project state. Sample actions do not call the gateway or write operation/project records.
 
 The demo requires both debug mode and `DJANGOOPS_WEB_DEMO=1`; it cannot be enabled

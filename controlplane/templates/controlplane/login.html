@@ -1,3 +1,23 @@
 {% extends "controlplane/base.html" %}
 {% block title %}DjangoOps · Sign in{% endblock %}
-{% block content %}<main class="login-shell"><section class="login-story"><div><a class="brand" href="{% url 'dashboard' %}"><span class="brand-mark">{% include "controlplane/icon.html" with name="layers" %}</span>Django<span class="brand-light">Ops</span></a><span class="eyebrow" style="color:#92bc9f">BUILT AROUND YOUR APPLICATION</span><h1>Deploy safely.<br> <em>Recover confidently.</em></h1><p>Django-aware deployments, health checks, and recovery. A clear path from your first VPS to Kubernetes.</p><div class="architecture"><div>{% include "controlplane/icon.html" with name="rocket" %}<strong>Migration gates</strong></div><span class="flow-arrow">→</span><div>{% include "controlplane/icon.html" with name="pulse" %}<strong>Health checks</strong></div><span class="flow-arrow">→</span><div>{% include "controlplane/icon.html" with name="shield" %}<strong>Safe recovery</strong></div></div></div><footer>Your infrastructure. Project-scoped access. Outbound agents.</footer></section><section class="login-form-area"><div class="login-form-inner"><span class="eyebrow">YOUR OPERATIONS WORKSPACE</span><h2>Welcome back.</h2><p>Sign in to manage your Django projects.</p><form method="post">{% csrf_token %}{{ form.as_p }}{% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}<button class="button primary" type="submit">Sign in {% include "controlplane/icon.html" with name="arrow" %}</button></form><p class="login-footnote">Use an operator account created for this control plane. Project membership determines which environments you can access.</p></div></section></main>{% endblock %}
+{% block content %}
+<main class="login-shell" id="main-content" tabindex="-1">
+  <div class="login-theme">{% include "controlplane/theme_toggle.html" %}</div>
+  <section class="login-story">
+    <div>
+      <a class="brand" href="{% url 'dashboard' %}"><span class="brand-mark">{% include "controlplane/icon.html" with name="layers" %}</span>Django<span class="brand-light">Ops</span></a>
+      <span class="eyebrow">BUILT AROUND YOUR APPLICATION</span>
+      <h1><span class="login-first">Deploy safely.</span> <em>Recover confidently.</em></h1>
+      <p>Django-aware deployments, health checks, and recovery. A clear path from your first VPS to Kubernetes.</p>
+      <div class="architecture"><div>{% include "controlplane/icon.html" with name="rocket" %}<strong>Migration gates</strong></div><span class="flow-arrow">→</span><div>{% include "controlplane/icon.html" with name="pulse" %}<strong>Health checks</strong></div><span class="flow-arrow">→</span><div>{% include "controlplane/icon.html" with name="shield" %}<strong>Safe recovery</strong></div></div>
+    </div>
+    <footer>Your infrastructure. Project-scoped access. Outbound agents.</footer>
+  </section>
+  <section class="login-form-area"><div class="login-form-inner">
+    <span class="eyebrow">YOUR OPERATIONS WORKSPACE</span><h2>Welcome back.</h2>
+    <p>Sign in to manage your Django projects.</p>
+    <form method="post">{% csrf_token %}{{ form.as_p }}{% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}<button class="button primary" type="submit">Sign in {% include "controlplane/icon.html" with name="arrow" %}</button></form>
+    <p class="login-footnote">Use an operator account created for this control plane. Project membership determines which environments you can access.</p>
+  </div></section>
+</main>
+{% endblock %}
