@@ -10,6 +10,7 @@ if (-not $env:DJANGOOPS_WEB_DB) {
     $env:DJANGOOPS_WEB_DB = Join-Path $projectRoot '.venv\djangoops-local.sqlite3'
 }
 $env:DJANGOOPS_WEB_DEBUG = '1'
+$env:DJANGOOPS_WEB_DEMO = '1'
 Push-Location $projectRoot
 try {
     & $projectPython manage.py migrate --noinput

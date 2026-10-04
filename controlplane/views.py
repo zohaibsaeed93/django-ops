@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from controlplane.models import AgentRegistration, DiagnosticOperation, Project
@@ -21,8 +23,11 @@ def _user(request: HttpRequest) -> User:
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
     user = _user(request)
+    demo_enabled = settings.DEBUG and settings.WEB_DEMO_ENABLED
+    demo_mode = demo_enabled and request.GET.get("mode", "demo") != "live"
     service = OperationsService()
-    projects = Project.objects.filter(members=user).prefetch_related(
+    projects = Project.objects.none() if demo_mode else Project.objects.filter(members=user)
+    projects = projects.prefetch_related(
         "agents",
         "operations__agent",
         "kubernetes_targets__agent",
@@ -43,7 +48,15 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                 "observability": summary_for_project(user, project.pk),
             }
         )
-    return render(request, "controlplane/dashboard.html", {"project_rows": rows})
+    return render(
+        request,
+        "controlplane/dashboard.html",
+        {
+            "project_rows": rows,
+            "demo_enabled": demo_enabled,
+            "demo_mode": demo_mode,
+        },
+    )
 
 
 @login_required
@@ -65,7 +78,7 @@ def start_diagnostic(request: HttpRequest, project_id: int, agent_id: int) -> Ht
     project = get_object_or_404(Project.objects.filter(members=user), pk=project_id)
     agent = get_object_or_404(AgentRegistration, pk=agent_id, project=project)
     OperationsService().start(agent=agent, user=user, diagnostic="django_health")
-    return redirect("dashboard")
+    return redirect(f"{reverse('dashboard')}?mode=live")
 
 
 @login_required
@@ -79,7 +92,7 @@ def cancel_diagnostic(request: HttpRequest, operation_id: str) -> HttpResponse:
     except (DiagnosticOperation.DoesNotExist, ValueError) as exc:
         raise Http404 from exc
     OperationsService().cancel(operation)
-    return redirect("dashboard")
+    return redirect(f"{reverse('dashboard')}?mode=live")
 
 
 @login_required

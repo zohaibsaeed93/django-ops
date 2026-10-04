@@ -176,7 +176,14 @@ On Windows, after `uv sync --group dev`, start the local dashboard with:
 ```
 
 This applies migrations, stores the development database in `.venv/djangoops-local.sqlite3`,
-and serves the dashboard at `http://127.0.0.1:8000`. Create a login account in that database with:
+and serves the dashboard at `http://127.0.0.1:8000`. It also enables the interactive demo:
+an explicitly labeled browser simulation of diagnostics, migration gates, rollout/rollback,
+cancellation, and database/media recovery. Switch to **Live workspace** to view real
+project state. Sample actions do not call the gateway or write operation/project records.
+
+The demo requires both debug mode and `DJANGOOPS_WEB_DEMO=1`; it cannot be enabled
+in production through a URL parameter. Other development launchers may set that environment
+variable explicitly. Create a login account in the local database with:
 
 ```powershell
 $env:DJANGOOPS_WEB_DB = Join-Path (Get-Location) '.venv\djangoops-local.sqlite3'

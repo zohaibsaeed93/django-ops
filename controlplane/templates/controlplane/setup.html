@@ -1,0 +1,13 @@
+<div class="setup-grid">
+<section class="card setup-step"><span class="step-number">01</span><h2>Describe your Django application</h2><p>Run the CLI in your Django application directory to create a non-secret configuration. Choose your module, hostname, and storage buckets.</p><pre>djangoops init --help
+djangoops compose</pre><span class="badge neutral">CLI · djangoops.yaml → Compose</span></section>
+<section class="card setup-step"><span class="step-number">02</span><h2>Provision the runtime</h2><p>For a VPS, install Docker and OpenSSH and provision the runtime environment and external S3 storage. For Kubernetes, register an existing namespace-scoped target.</p><pre>djangoops deploy --help
+djangoops backup-schedule --help</pre><span class="badge neutral">Your VPS or existing cluster</span></section>
+<section class="card setup-step"><span class="step-number">03</span><h2>Connect the outbound agent</h2><p>Provision the control plane's TLS certificate and runtime agent credentials. Configure the Go agent's trusted CA, endpoint, and project root. The dashboard-only development server does not start this gateway.</p><pre>DJANGOOPS_CONTROLPLANE_ENDPOINT=ops.example.com:8443
+DJANGOOPS_PROJECT_ROOT=/srv/djangoops/my-app
+# Provision CA and agent credentials separately.</pre><span class="badge neutral">Agent → authenticated TLS gateway</span></section>
+<section class="card setup-step"><span class="step-number">04</span><h2>Grant project access and verify</h2><p>Create Project and AgentRegistration records through operator-controlled Django tooling, add your user to Project.members, then run a live diagnostic. Kubernetes control uses the typed GraphQL API.</p><pre>POST /graphql/v1
+# Session authentication + CSRF required.
+djangoops health --help</pre><span class="badge neutral">Project-scoped dashboard + API</span></section>
+</div>
+<div class="notice section-space">Read the repository runbooks for the complete provisioning steps: <code>docs/phase1-agent-channel.md</code>, <code>docs/phase2-dashboard-graphql.md</code>, and <code>docs/phase3-kubernetes.md</code>. The snippets above are orientation, not a complete production configuration.</div>
